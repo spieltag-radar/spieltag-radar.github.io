@@ -149,7 +149,7 @@ const DE_NAMES = {
   "Qarabag":"Qarabağ","Tottenham Hotspur":"Tottenham","Wolverhampton Wanderers":"Wolverhampton","Brighton & Hove Albion":"Brighton",
   "Manchester United":"Manchester United","Manchester City":"Manchester City","Paris Saint-Germain":"Paris Saint-Germain",
   "Lyon":"Olympique Lyon","Marseille":"Olympique Marseille","Celtic":"Celtic Glasgow","Rangers":"Glasgow Rangers","Liverpool":"FC Liverpool",
-  "Arsenal":"FC Arsenal","Chelsea":"FC Chelsea","Juventus":"Juventus Turin","Dinamo Zagreb":"Dinamo Zagreb","Red Bull Salzburg":"RB Salzburg"
+  "Arsenal":"FC Arsenal","Crystal Palace":"Crystal Palace","Nottingham Forest":"Nottingham Forest","West Ham United":"West Ham","Newcastle United":"Newcastle","Aston Villa":"Aston Villa","Chelsea":"FC Chelsea","Juventus":"Juventus Turin","Dinamo Zagreb":"Dinamo Zagreb","Red Bull Salzburg":"RB Salzburg"
 };
 const deName = t => DE_NAMES[t.displayName] || t.shortDisplayName || t.displayName;
 
@@ -238,7 +238,7 @@ function matchHTML(ev, slug, opts = {}) {
       : `<div class="score"><span>${esc(scoreOf(home))}</span><span>${esc(scoreOf(away))}</span></div>`;
   }
   const winH = !hide && st.state === "post" && home.winner, winA = !hide && st.state === "post" && away.winner;
-  const logo = t => t.logo ? `<img loading="lazy" src="${esc(t.logo)}" alt="">` : `<span style="width:20px"></span>`;
+  const logo = t => { const u = t.logo || t.logos?.[0]?.href || (t.id ? `https://a.espncdn.com/i/teamlogos/soccer/500/${t.id}.png` : ""); return u ? `<img loading="lazy" src="${esc(u)}" alt="" onerror="this.style.visibility='hidden'">` : `<span style="width:20px"></span>`; };
   const dateLine = opts.withDate ? `<div class="sub">${esc(berlin(ev.date, { weekday:"short", day:"2-digit", month:"2-digit" }))} · ${esc((COMP_BY[slug]||{}).name || ev.league?.name || "")}</div>` : "";
   return `<div class="match${fav ? " fav" : ""}" data-ev="${esc(ev.id)}" data-slug="${esc(slug)}">
     <div class="row">
