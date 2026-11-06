@@ -439,6 +439,7 @@ function slideIn(el, dir) {
   el.style.transition = "transform .38s cubic-bezier(.1,.9,.2,1), opacity .28s ease-out";
   el.style.transform = ""; el.style.opacity = "";
 }
+function compBack() { state.compSel = null; store.set("sr_comp", null); render(true); window.scrollTo(0, 0); slideIn($("#app"), -1); }
 const VIEW_ORDER = ["teams", "games", "tables", "comps"];
 function goView(v) {
   const dir = Math.sign(VIEW_ORDER.indexOf(v) - VIEW_ORDER.indexOf(state.view));
@@ -486,6 +487,11 @@ $("#home").addEventListener("click", () => goView("teams"));
     }
     if ($("#teamview").classList.contains("open") && el === $("#teamview")) {
       if (dir < 0) { el.style.transition = "transform .2s ease-in, opacity .2s"; el.style.transform = "translateX(100%)"; el.style.opacity = "0"; setTimeout(() => { closeTeam(false); el.style.transition = "none"; el.style.transform = ""; el.style.opacity = ""; }, 200); } else reset();
+      return;
+    }
+    // In einem geoeffneten Wettbewerb: nach rechts wischen fuehrt zurueck zur Wettbewerbe-Uebersicht
+    if (state.view === "comps" && state.compSel && el === $("#app")) {
+      if (dir < 0) compBack(); else reset();
       return;
     }
     const n = VIEW_ORDER.indexOf(state.view) + dir;
@@ -567,8 +573,8 @@ document.addEventListener("click", e => {
   const tc = e.target.closest("[data-tablecomp]");
   if (tc) { state.tableComp = tc.dataset.tablecomp; store.set("sr_table", state.tableComp); render(); }
   const cp = e.target.closest("[data-comp]");
-  if (cp) { state.compSel = cp.dataset.comp; store.set("sr_comp", state.compSel); state.compSub = "games"; store.set("sr_compsub", "games"); state.compRound = null; render(true); window.scrollTo(0, 0); return; }
-  if (e.target.closest("[data-compback]")) { state.compSel = null; store.set("sr_comp", null); render(true); return; }
+  if (cp) { state.compSel = cp.dataset.comp; store.set("sr_comp", state.compSel); state.compSub = "games"; store.set("sr_compsub", "games"); state.compRound = null; render(true); window.scrollTo(0, 0); slideIn($("#app"), 1); return; }
+  if (e.target.closest("[data-compback]")) { compBack(); return; }
   const cs = e.target.closest("[data-compsub]");
   if (cs) { state.compSub = cs.dataset.compsub; store.set("sr_compsub", state.compSub); render(true); return; }
   const rd = e.target.closest("[data-round]");
