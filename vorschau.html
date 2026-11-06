@@ -439,12 +439,22 @@ function slideIn(el, dir) {
   el.style.transition = "transform .38s cubic-bezier(.1,.9,.2,1), opacity .28s ease-out";
   el.style.transform = ""; el.style.opacity = "";
 }
-function compBack() { state.compSel = null; store.set("sr_comp", null); render(true); window.scrollTo(0, 0); slideIn($("#app"), -1); }
+// Ein geoeffneter Wettbewerb bekommt einen eigenen Verlaufseintrag: so fuehrt auch die Zurueck-Geste des Browsers (Wisch vom linken Rand) zur Uebersicht
+let compPushed = false;
+function compPush() { try { history.pushState({ comp: state.compSel }, ""); compPushed = true; } catch {} }
+function compPop() { if (!compPushed) return; compPushed = false; ignorePop++; try { history.back(); } catch { ignorePop--; } }
+function compBack(fromHistory) {
+  if (fromHistory) compPushed = false; else compPop();
+  state.compSel = null; store.set("sr_comp", null); render(true); window.scrollTo(0, 0); slideIn($("#app"), -1);
+}
+if (state.view === "comps" && state.compSel) compPush();
 const VIEW_ORDER = ["teams", "games", "tables", "comps"];
 function goView(v) {
   const dir = Math.sign(VIEW_ORDER.indexOf(v) - VIEW_ORDER.indexOf(state.view));
+  const overlay = $("#detail").classList.contains("open") || $("#teamview").classList.contains("open");
   if ($("#detail").classList.contains("open")) closeDetail(false);
   if ($("#teamview").classList.contains("open")) closeTeam(false);
+  if (!overlay) compPop(); else compPushed = false;
   if (v === "comps") { state.compSel = null; store.set("sr_comp", null); state.compRound = null; }
   if (v === "games") state.day = new Date();
   state.view = v; store.set("sr_view", v); render(true); window.scrollTo(0, 0);
@@ -573,7 +583,7 @@ document.addEventListener("click", e => {
   const tc = e.target.closest("[data-tablecomp]");
   if (tc) { state.tableComp = tc.dataset.tablecomp; store.set("sr_table", state.tableComp); render(); }
   const cp = e.target.closest("[data-comp]");
-  if (cp) { state.compSel = cp.dataset.comp; store.set("sr_comp", state.compSel); state.compSub = "games"; store.set("sr_compsub", "games"); state.compRound = null; render(true); window.scrollTo(0, 0); slideIn($("#app"), 1); return; }
+  if (cp) { state.compSel = cp.dataset.comp; store.set("sr_comp", state.compSel); state.compSub = "games"; store.set("sr_compsub", "games"); state.compRound = null; compPush(); render(true); window.scrollTo(0, 0); slideIn($("#app"), 1); return; }
   if (e.target.closest("[data-compback]")) { compBack(); return; }
   const cs = e.target.closest("[data-compsub]");
   if (cs) { state.compSub = cs.dataset.compsub; store.set("sr_compsub", state.compSub); render(true); return; }
@@ -1279,6 +1289,7 @@ window.addEventListener("popstate", () => {
   const d = $("#detail"), t = $("#teamview");
   const dOpen = d.classList.contains("open"), tOpen = t.classList.contains("open");
   if (dOpen && (!tOpen || +d.style.zIndex > +t.style.zIndex)) closeDetail(true); else if (tOpen) closeTeam(true);
+  else if (state.view === "comps" && state.compSel) compBack(true);
 });
 
 /* ================= Teamseite: letzte und naechste Spiele ================= */
