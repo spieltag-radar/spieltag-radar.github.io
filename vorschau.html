@@ -205,6 +205,9 @@ th,td,.lead,.stat,.pl,.tick,.ev,.crow{border-color:var(--line)}
 .trow .op{font-size:16px;line-height:1.25;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .trow .op small{opacity:.75;font-size:13px}
 .trow .res{font-size:20px;font-weight:300;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.rb{display:inline-block;min-width:62px;text-align:center;padding:3px 8px;font-size:18px;font-weight:600;color:#fff;border:1.5px solid rgba(255,255,255,.9)}
+.rb.w{background:#15803d}.rb.d{background:#6b7280}.rb.l{background:#b91c1c}
+.trow .vid.yt{background:rgba(0,0,0,.18);font-weight:400;opacity:.9}
 .trow .vids{grid-column:2/5;margin:6px 0 2px;display:flex;flex-wrap:wrap;gap:6px}
 .trow .vid{background:rgba(0,0,0,.28);color:inherit;font-size:13px;padding:5px 9px;font-weight:500}
 .trow .vid.main{background:rgba(0,0,0,.45)}
@@ -636,7 +639,10 @@ async function fillVideos(root) {
     } else {
       const comp = ev.competitions[0];
       const q = encodeURIComponent(comp.competitors.map(c => deName(c.team)).join(" ") + " Highlights");
-      n.innerHTML = `<span class="novid">${vids.error ? "Videosuche gerade nicht erreichbar." : "Noch keine Zusammenfassung gefunden."} <a href="https://www.youtube.com/results?search_query=${q}" target="_blank" rel="noopener">YouTube-Suche</a> (Vorschaubilder können das Ergebnis verraten)</span>`;
+      const yt = `https://www.youtube.com/results?search_query=${q}`;
+      n.innerHTML = n.closest(".tile")
+        ? `<a class="vid yt" href="${yt}" target="_blank" rel="noopener">▶ YouTube-Suche</a>`
+        : `<span class="novid">${vids.error ? "Videosuche nicht erreichbar" : "Kein Video gefunden"} · <a href="${yt}" target="_blank" rel="noopener">YouTube-Suche</a>${state.spoiler ? " (Vorschaubilder können das Ergebnis verraten)" : ""}</span>`;
     }
   }));
 }
@@ -732,7 +738,9 @@ async function viewTeams() {
       const home = me.homeAway === "home", slug = e.league?.slug;
       const where = home ? "gegen" : (t.id === "481" || t.id === "480" ? "in" : "bei");
       const hide = isPast && state.spoiler && !state.revealed.has(e.id);
-      const res = isPast ? (hide ? `<button class="reveal" data-reveal="${esc(e.id)}">?</button>` : `${esc(scoreOf(me))} : ${esc(scoreOf(op))}`) : esc(hm(e.date));
+      const g1 = parseInt(scoreOf(me), 10), g2 = parseInt(scoreOf(op), 10);
+      const out = me.winner ? "w" : op.winner ? "l" : g1 > g2 ? "w" : g1 < g2 ? "l" : "d";
+      const res = isPast ? (hide ? `<button class="reveal" data-reveal="${esc(e.id)}">?</button>` : `<b class="rb ${out}">${esc(scoreOf(me))} : ${esc(scoreOf(op))}</b>`) : esc(hm(e.date));
       const when = `${esc(wd(e.date))}<small>${esc(berlin(e.date, { day: "2-digit", month: "2-digit" }))}</small>`;
       return `<div class="trow match" data-ev="${esc(e.id)}" data-slug="${esc(slug)}"><span class="when">${when}</span>${crestOf(op.team, "s")}<span class="op"><small>${where}</small> ${esc(deName(op.team))}</span><span class="res">${res}</span>
         ${isPast ? `<div class="vids" data-vids="${esc(e.id)}"></div>` : ""}</div>`;
