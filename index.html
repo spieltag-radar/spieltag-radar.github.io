@@ -205,7 +205,9 @@ const EXTRA = [
   { slug: "ita.1", name: "Serie A", table: true },
   { slug: "fra.1", name: "Ligue 1", table: true },
   { slug: "ned.1", name: "Eredivisie", table: true },
-  { slug: "por.1", name: "Liga Portugal", table: true }
+  { slug: "por.1", name: "Liga Portugal", table: true },
+  // Ungarn NB I: ESPN fuehrt die Liga nicht, daher TheSportsDB (kostenloser Zugang, keine Live-Staende, keine Spieldetails)
+  { slug: "hun.1", name: "NB I (Ungarn)", table: true, tsdb: "4690", rounds: 33 }
 ];
 const COMP_BY = Object.fromEntries([...COMPS, ...EXTRA].map(c => [c.slug, c]));
 // Offizielle YouTube-Kanaele (geprueft am 06.11.2026)
@@ -347,7 +349,7 @@ function matchHTML(ev, slug, opts = {}) {
   const winH = !hide && st.state === "post" && home.winner, winA = !hide && st.state === "post" && away.winner;
   const logo = t => { const u = t.logo || t.logos?.[0]?.href || (t.id ? `https://a.espncdn.com/i/teamlogos/soccer/500/${t.id}.png` : ""); return u ? `<img loading="lazy" src="${esc(u)}" alt="" onerror="this.style.visibility='hidden'">` : `<span style="width:20px"></span>`; };
   const dateLine = opts.withDate ? `<div class="sub">${esc(berlin(ev.date, { weekday:"short", day:"2-digit", month:"2-digit" }))} · ${esc((COMP_BY[slug]||{}).name || ev.league?.name || "")}</div>` : "";
-  return `<div class="match${fav ? " fav" : ""}" data-ev="${esc(ev.id)}" data-slug="${esc(slug)}">
+  return `<div class="match${fav ? " fav" : ""}${opts.noDetail ? " nodetail" : ""}" data-ev="${esc(ev.id)}" data-slug="${esc(slug)}">
     <div class="row">
       <div class="time${st.live ? " live" : ""}">${esc(st.label)}</div>
       <div class="teams">
@@ -363,7 +365,7 @@ function matchHTML(ev, slug, opts = {}) {
 
 document.addEventListener("click", e => {
   const open = e.target.closest(".match");
-  if (open && !e.target.closest("a,button") && !open.closest("#detail")) { openDetail(open.dataset.ev, open.dataset.slug); return; }
+  if (open && !e.target.closest("a,button") && !open.closest("#detail") && !open.classList.contains("nodetail")) { openDetail(open.dataset.ev, open.dataset.slug); return; }
   const r = e.target.closest("[data-reveal]");
   if (r) { state.revealed.add(r.dataset.reveal); render(); }
   const t = e.target.closest("[data-showtable]");
@@ -672,6 +674,7 @@ function defaultRound(rounds) {
   return Math.max(0, lastPast);
 }
 async function compPage(slug) {
+  if (COMP_BY[slug].tsdb) return tsdbPage(slug);
   const c = COMP_BY[slug], sub = state.compSub || "games";
   let html = `<div class="ctop"><button class="back" data-compback="1">‹ Wettbewerbe</button><b>${esc(c.name)}</b></div>`;
   html += `<div class="seg small">${[["games","Spiele"],["table","Tabelle"],["goals","Torschützen"],["assists","Vorlagen"]].map(([k, l]) => `<button data-compsub="${k}" class="${k === sub ? "active" : ""}">${l}</button>`).join("")}</div>`;
@@ -692,6 +695,82 @@ async function compPage(slug) {
     html += `<section class="comp"><h2><span>${esc(berlin(evs[0].date, { weekday: "long", day: "2-digit", month: "2-digit" }))}</span><span>${evs.length}</span></h2>${evs.map(e => matchHTML(e, slug)).join("")}</section>`;
   }
   return html;
+}
+
+/* ================= Ungarn NB I ueber TheSportsDB ================= */
+const TSDB = "https://www.thesportsdb.com/api/v1/json/123/";
+async function tsdbRound(c, season, r) {
+  const k = `sr_tsdb_${c.tsdb}_${season}_${r}`, hit = store.get(k, null);
+  if (hit) return hit;
+  let j;
+  for (let tries = 0; ; tries++) {
+    try { j = await getJSON(`${TSDB}eventsround.php?id=${c.tsdb}&r=${r}&s=${season}`, 5 * 60000); break; }
+    catch (e) { if (tries >= 3) throw e; await new Promise(res => setTimeout(res, 4000 * (tries + 1))); }
+  }
+  const evs = (j.events || []).map(e => ({ id: e.idEvent, ts: e.strTimestamp, st: e.strStatus, pp: e.strPostponed, h: e.strHomeTeam, a: e.strAwayTeam, hi: e.idHomeTeam, ai: e.idAwayTeam, hb: e.strHomeTeamBadge, ab: e.strAwayTeamBadge, hs: e.intHomeScore, as: e.intAwayScore }));
+  // Abgeschlossene Spieltage dauerhaft merken (spart Abrufe, die Quelle erlaubt nur wenige pro Minute)
+  if (evs.length && evs.every(e => e.hs != null && e.as != null)) store.set(k, evs);
+  return evs;
+}
+function tsdbEv(e) {
+  const date = e.ts ? e.ts + "Z" : null;
+  const done = e.hs != null && e.as != null;
+  const started = date && new Date(date) < Date.now();
+  const st = done ? "post" : started && !/postp|canc/i.test(e.st || "") && e.pp !== "yes" ? "in" : "pre";
+  const team = (id, n, b) => ({ id: "tsdb" + id, displayName: n, logo: b ? b + "/tiny" : "" });
+  const H = +e.hs, A = +e.as;
+  return { id: "tsdb" + e.id, date, competitions: [{ status: { displayClock: "läuft", type: { state: st, name: e.pp === "yes" ? "STATUS_POSTPONED" : "", detail: "" } }, competitors: [
+    { homeAway: "home", team: team(e.hi, e.h, e.hb), score: done ? String(e.hs) : null, winner: done && H > A },
+    { homeAway: "away", team: team(e.ai, e.a, e.ab), score: done ? String(e.as) : null, winner: done && A > H }
+  ] }] };
+}
+async function tsdbPage(slug) {
+  const c = COMP_BY[slug];
+  const sub = state.compSub === "table" ? "table" : "games";
+  let html = `<div class="ctop"><button class="back" data-compback="1">‹ Wettbewerbe</button><b>${esc(c.name)}</b></div>`;
+  html += `<div class="seg small">${[["games","Spiele"],["table","Tabelle"]].map(([k, l]) => `<button data-compsub="${k}" class="${k === sub ? "active" : ""}">${l}</button>`).join("")}</div>`;
+  const [nx, pv] = await Promise.all([getJSON(`${TSDB}eventsnextleague.php?id=${c.tsdb}`, 30 * 60000).catch(() => ({})), getJSON(`${TSDB}eventspastleague.php?id=${c.tsdb}`, 30 * 60000).catch(() => ({}))]);
+  const next = (nx.events || [])[0], past = (pv.events || [])[0];
+  const season = (next || past)?.strSeason;
+  if (!season) return html + `<div class="empty">Daten für die NB I sind gerade nicht erreichbar.</div>`;
+  const lastRound = past ? +past.intRound : 0;
+  if (sub === "table") {
+    if (state.spoiler && !state.tablesRevealed) return html + `<div class="empty">Die Tabelle verrät Ergebnisse.<br><br><button class="reveal" data-showtable="1">Trotzdem anzeigen</button></div>`;
+    const rounds = [];
+    // Nacheinander mit kurzer Pause abrufen: der kostenlose Zugang erlaubt nur etwa 30 Abrufe pro Minute
+    for (let r = 1; r <= lastRound + 1 && r <= c.rounds; r++) {
+      const cached = store.get(`sr_tsdb_${c.tsdb}_${season}_${r}`, null);
+      rounds.push(cached || await tsdbRound(c, season, r));
+      if (!cached) await new Promise(res => setTimeout(res, 600));
+    }
+    const tab = new Map();
+    const row = (id, n, b) => { if (!tab.has(id)) tab.set(id, { n, b, sp: 0, s: 0, u: 0, nl: 0, gf: 0, ga: 0 }); return tab.get(id); };
+    rounds.flat().forEach(e => {
+      const h = row(e.hi, e.h, e.hb), a = row(e.ai, e.a, e.ab);
+      if (e.hs == null || e.as == null) return;
+      const H = +e.hs, A = +e.as;
+      h.sp++; a.sp++; h.gf += H; h.ga += A; a.gf += A; a.ga += H;
+      if (H > A) { h.s++; a.nl++; } else if (H < A) { a.s++; h.nl++; } else { h.u++; a.u++; }
+    });
+    const list = [...tab.values()].map(t => ({ ...t, p: t.s * 3 + t.u, d: t.gf - t.ga })).sort((x, y) => y.p - x.p || y.d - x.d || y.gf - x.gf || x.n.localeCompare(y.n));
+    return html + `<section class="comp"><table class="tbl"><thead><tr><th class="r">#</th><th class="t">Team</th><th>Sp</th><th>S</th><th>U</th><th>N</th><th>Tore</th><th>Diff</th><th>Pkt</th></tr></thead><tbody>
+      ${list.map((t, i) => `<tr><td class="r">${i + 1}</td><td class="t">${t.b ? `<img loading="lazy" src="${esc(t.b)}/tiny" alt="">` : ""}<span>${esc(t.n)}</span></td><td>${t.sp}</td><td>${t.s}</td><td>${t.u}</td><td>${t.nl}</td><td>${t.gf}:${t.ga}</td><td>${t.d > 0 ? "+" + t.d : t.d}</td><td><b>${t.p}</b></td></tr>`).join("")}
+      </tbody></table></section><p class="note">Selbst berechnet aus allen Ergebnissen (3 Punkte pro Sieg, bei Gleichstand Tordifferenz, dann Tore). Die offizielle Tabelle kann bei Punktgleichheit anders sortiert sein. Quelle: TheSportsDB.</p>`;
+  }
+  if (state.compRound == null || state.compRoundFor !== slug) {
+    const pastRecent = past && past.strTimestamp && Date.now() - new Date(past.strTimestamp + "Z") < 2 * 86400000;
+    state.compRound = pastRecent || !next ? lastRound : +next.intRound; state.compRoundFor = slug;
+  }
+  state.compRound = Math.min(Math.max(state.compRound, 1), c.rounds);
+  const evs = (await tsdbRound(c, season, state.compRound)).map(tsdbEv).sort((a, b) => new Date(a.date) - new Date(b.date));
+  html += `<div class="daybar"><button data-round="-1" aria-label="Vorige Runde"${state.compRound === 1 ? " disabled" : ""}>‹</button>
+    <div class="label"><b>${state.compRound}. Spieltag</b><small>${evs.length ? esc(berlin(evs[0].date, { day: "2-digit", month: "2-digit" }) + (evs.length > 1 ? " bis " + berlin(evs[evs.length - 1].date, { day: "2-digit", month: "2-digit" }) : "")) : ""}</small></div>
+    <button data-round="1" aria-label="Nächster Spieltag"${state.compRound === c.rounds ? " disabled" : ""}>›</button></div>`;
+  if (!evs.length) return html + `<div class="empty">Für diesen Spieltag sind noch keine Spiele eingetragen.</div>`;
+  const byDay = new Map();
+  evs.forEach(e => { evIndex.set(e.id, e); const k = ymd(new Date(e.date)); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push(e); });
+  for (const list of byDay.values()) html += `<section class="comp"><h2><span>${esc(berlin(list[0].date, { weekday: "long", day: "2-digit", month: "2-digit" }))}</span><span>${list.length}</span></h2>${list.map(e => matchHTML(e, slug, { noDetail: true })).join("")}</section>`;
+  return html + `<p class="note">Quelle: TheSportsDB. Ergebnisse erscheinen erst nach Spielende, Spieldetails gibt es für diese Liga nicht.</p>`;
 }
 
 /* ================= Spieldetails ================= */
