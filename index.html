@@ -184,7 +184,7 @@ th,td,.lead,.stat,.pl,.tick,.ev,.crow{border-color:var(--line)}
 .lineup h4{background:none;font-size:20px;font-weight:300;color:var(--accent);border:0;padding:12px 0 4px}
 .crow{font-size:22px;font-weight:300;padding:12px 0;border:0;color:var(--text)}
 .ctop b{font-size:28px;font-weight:300}
-#detail,#teamview{background:var(--bg)}
+#detail,#teamview{background:var(--bg);overflow-x:hidden}
 .dhead{background:var(--bg);border:0;padding:calc(env(safe-area-inset-top) + 12px) 16px 0}
 .dtabs{overflow-x:auto;scrollbar-width:none;gap:0}
 .dtabs button{flex:none;font-size:26px;font-weight:300;color:#4a4a4a;padding:4px 16px 6px 0;border:0}
@@ -193,33 +193,26 @@ th,td,.lead,.stat,.pl,.tick,.ev,.crow{border-color:var(--line)}
 .thead b{font-size:30px;font-weight:300}
 .bars .h{background:var(--accent)}.bars .a{background:#8c8c8c}
 /* Startseite im Kachel-Stil */
-.tile{position:relative;padding:14px 14px 8px;margin-bottom:10px}
-.tile .th{display:flex;align-items:center;gap:12px;padding-bottom:6px;cursor:pointer}
-.tile .th b{font-size:28px;font-weight:300;letter-spacing:-.6px;line-height:1.1}
+.tile{position:relative;padding:14px;margin-bottom:10px}
+.tile .th{display:flex;align-items:center;gap:12px;margin-bottom:12px;cursor:pointer}
+.tile .th b{font-size:26px;font-weight:300;letter-spacing:-.5px;line-height:1.1}
 .crest{width:40px;height:40px;background:#fff;display:inline-flex;align-items:center;justify-content:center;flex:none}
 .crest img{width:32px;height:32px;object-fit:contain}
-.crest.s{width:26px;height:26px}.crest.s img{width:21px;height:21px}
-.tile .lbl{font-size:14px;letter-spacing:.2px;opacity:.75;margin:10px 0 2px;font-weight:600}
-.trow{display:grid;grid-template-columns:82px 26px 1fr auto;column-gap:10px;align-items:center;padding:7px 0;border-top:1px solid rgba(127,127,127,.28);cursor:pointer}
+.crest.s{width:24px;height:24px}.crest.s img{width:19px;height:19px}
+.tile .lbl{font-size:13px;letter-spacing:.3px;opacity:.75;margin:10px 0 4px;font-weight:600}
+.trow{display:grid;grid-template-columns:72px 24px 1fr auto;column-gap:10px;align-items:center;padding:8px 10px;margin-bottom:3px;background:rgba(0,0,0,.16);cursor:pointer}
 .trow .when{font-size:14px;line-height:1.2}.trow .when small{display:block;font-size:12px;opacity:.75}
 .trow .op{font-size:16px;line-height:1.25;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .trow .op small{opacity:.75;font-size:13px}
-.trow .res{font-size:20px;font-weight:300;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
-.rb{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;font-size:16px;font-weight:700;color:#fff;border:1.5px solid rgba(255,255,255,.9)}
-.trow.past{grid-template-columns:82px 1fr auto}
-.trow.past .vids{grid-column:2/4}
-.pair{min-width:0}
-.pl2{display:grid;grid-template-columns:26px 1fr auto;gap:9px;align-items:center;padding:2px 0}
-.pl2 span{font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.8}
-.pl2 b{font-size:20px;font-weight:300;font-variant-numeric:tabular-nums;min-width:16px;text-align:right;opacity:.8}
-.pl2.win span,.pl2.win b{font-weight:700;opacity:1}
-.rb.w{background:#15803d}.rb.d{background:#6b7280}.rb.l{background:#b91c1c}
-.trow .vid.yt{background:rgba(0,0,0,.18);font-weight:400;opacity:.9}
-.trow .vids{grid-column:2/5;margin:6px 0 2px;display:flex;flex-wrap:wrap;gap:6px}
-.trow .vid{background:rgba(0,0,0,.28);color:inherit;font-size:13px;padding:5px 9px;font-weight:500}
-.trow .vid.main{background:rgba(0,0,0,.45)}
+.trow .res{font-size:19px;font-weight:300;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.trow .vids{grid-column:2/5;margin:6px 0 0;display:flex;flex-wrap:wrap;gap:5px}
+.trow .vid{background:rgba(0,0,0,.3);color:inherit;font-size:13px;padding:4px 8px;font-weight:500}
+.trow .vid small{opacity:1}
+.trow .vid.main{background:rgba(0,0,0,.5)}
+.trow .vid.yt{background:rgba(0,0,0,.2);font-weight:400;opacity:.85}
 .trow .novid,.trow .novid a{color:inherit;opacity:.75;font-size:12px}
 .trow .reveal{border-color:currentColor;color:inherit;padding:2px 8px;font-size:13px}
+.trow:empty{display:none}
 .tile.match,.trow.match{border-bottom:0}
 .tile.today{background:var(--accent);color:#fff;cursor:pointer}
 .tile.today .big{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;text-align:center}
@@ -228,6 +221,38 @@ th,td,.lead,.stat,.pl,.tick,.ev,.crow{border-color:var(--line)}
 .tile.today .meta{font-size:13px;opacity:.9;margin-bottom:8px}
 .tile.today .vids{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 2px}
 .tile.today .vid{background:rgba(0,0,0,.28);color:#fff}
+.rb{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;font-size:16px;font-weight:700;color:#fff;border:1.5px solid rgba(255,255,255,.9)}
+.rb.w{background:#15803d}.rb.d{background:#6b7280}.rb.l{background:#b91c1c}
+.trow.past{grid-template-columns:72px 1fr auto}
+.trow.past .vids{grid-column:2/4}
+.pair{min-width:0}
+.pl2{display:grid;grid-template-columns:24px 1fr auto;gap:9px;align-items:center;padding:2px 0}
+.pl2 span{font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.8}
+.pl2 b{font-size:19px;font-weight:300;font-variant-numeric:tabular-nums;min-width:16px;text-align:right;opacity:.8}
+.pl2.win span,.pl2.win b{font-weight:700;opacity:1}
+/* Hauptmenue als Kacheln */
+header{padding-bottom:6px}
+nav{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px 16px 0;margin:0;overflow:visible}
+nav button{font-size:14px;font-weight:500;letter-spacing:0;line-height:1.15;color:#fff;padding:0 7px 7px;height:64px;display:flex;align-items:flex-end;text-align:left;opacity:.45;white-space:normal;overflow:hidden;hyphens:manual}
+nav button[data-view="teams"]{background:#1ba1e2}nav button[data-view="games"]{background:#8cbf26}
+nav button[data-view="tables"]{background:#e51400}nav button[data-view="comps"]{background:#f09609}
+nav button.active{opacity:1;color:#fff;font-weight:600}
+/* Auswahlleisten als Kacheln */
+.seg{gap:6px;margin:4px 0 8px}
+.seg button{flex:none;background:#1c1c1c;color:#bdbdbd;font-size:15px;font-weight:400;letter-spacing:0;padding:16px 12px 8px;min-width:96px;text-align:left}
+.seg button.active{background:var(--accent);color:#fff;font-weight:500}
+.seg.small{gap:6px}.seg.small button{font-size:14px;padding:10px 12px;min-width:0}
+.seg.small button.active{background:#fff;color:#000;font-weight:500}
+/* Spiele als Kacheln */
+.comp>.match{background:#1c1c1c;padding:12px;margin-bottom:6px}
+.comp>.match.fav{box-shadow:inset 4px 0 0 var(--accent)}
+.vids,.sub{margin-left:62px}
+/* Wettbewerbe als Kacheln */
+.cgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ctile{border:0;color:#fff;text-align:left;font-family:inherit;font-size:18px;font-weight:400;padding:52px 12px 10px;cursor:pointer;line-height:1.2}
+/* Tabellen groesser */
+.tbl{font-size:18px}.tbl th{font-size:15px}.tbl th,.tbl td{padding:9px 3px}.tbl td.t{max-width:118px}.tbl td.t img{width:22px;height:22px}
+.lead{font-size:18px}.lead small{font-size:15px}.lead .v{font-size:21px}
 </style>
 </head>
 <body>
@@ -240,7 +265,7 @@ th,td,.lead,.stat,.pl,.tick,.ev,.crow{border-color:var(--line)}
     <button data-view="teams" class="active">Start</button>
     <button data-view="games">Spiele</button>
     <button data-view="tables">Tabellen</button>
-    <button data-view="comps">Wettbewerbe</button>
+    <button data-view="comps">Wett&shy;bewerbe</button>
   </nav>
 </header>
 <main id="app"><div class="load">Lade Daten …</div></main>
@@ -292,6 +317,9 @@ async function isCurrent(slug) {
   store.set(ck, { t: Date.now(), v });
   return v;
 }
+// Markenfarben der Wettbewerbe fuer die Kacheln
+const COMP_COLOR = { "uefa.champions": "#1e3a8a", "uefa.europa": "#f26d00", "uefa.europa.conf": "#16a34a", "uefa.nations": "#0f4c81", "uefa.euroq": "#1d4ed8", "uefa.euro": "#1d4ed8", "fifa.worldq.uefa": "#8a1538", "fifa.world": "#8a1538",
+  "ger.1": "#d20515", "eng.1": "#37003c", "esp.1": "#ff4b44", "ita.1": "#008fd7", "fra.1": "#091c3e", "ned.1": "#f36c21", "por.1": "#00205b", "hun.1": "#52ae32" };
 // Weitere Ligen nur im Reiter "Wettbewerbe" (nicht in "Spiele" und "Tabellen")
 const EXTRA = [
   { slug: "esp.1", name: "La Liga", table: true },
@@ -307,23 +335,24 @@ const COMP_BY = Object.fromEntries([...COMPS, ...EXTRA].map(c => [c.slug, c]));
 const CH = {
   daznUcl:   { id: "UCB-GdMjyokO9lZkKU_oIK6g", label: "DAZN" },
   prime:     { id: "UCK2izXoHvraUFaPMU5B7vMQ", label: "Prime Video" },
-  zdf:       { id: "UClCIWcZNvq15p0Y-E4ToGOw", label: "ZDF" },
-  sportschau:{ id: "UCqrBvmQ2--9BO4hTOedYyoQ", label: "Sportschau" },
+  zdf:       { id: "UClCIWcZNvq15p0Y-E4ToGOw", label: "ZDF", pages: 3 },
+  sportschau:{ id: "UCqrBvmQ2--9BO4hTOedYyoQ", label: "Sportschau", pages: 3 },
   skyPl:     { id: "UC_VsQmcsFWUhGn3DTwiO8bg", label: "Sky" },
   skyBl:     { id: "UCnMoVIRPPjjzWhAUYdjVMLw", label: "Sky" },
   faCup:     { id: "UCChcWqwYXCEs657MQ00qVWA", label: "FA Cup" },
-  rtl:       { id: "UC8WYi3XQXsf-6FNvqoEvxag", label: "RTL" },
+  rtl:       { id: "UC8WYi3XQXsf-6FNvqoEvxag", label: "RTL", pages: 3 },
   daznFb:    { id: "UClBFnQJMlinWDCvfSXj60CA", label: "DAZN" },
   bvb:       { id: "UCK8rTVgp3-MebXkmeJcQb1Q", label: "BVB" },
   lfc:       { id: "UC9LQwHZoucFT94I2h6JOcjw", label: "LFC" },
+  m4:        { id: "UC3PLCyEg6eElkWF-aLDL5Rw", label: "M4 Sport", pages: 2 }, // ungarischer Sender (@m4sport-hivatalos), NB I und ungarische Vereine im Europapokal
   mlsz:      { id: "UCwEejTLJklgxrlWce44tL9w", label: "MLSZ", pages: 8 } // ungarischer Verband, ca. 150 Videos pro Woche, daher 8 Seiten (rund 2 Wochen)
 };
 const VIDEO_CHANNELS = {
   "ger.1": ["skyBl", "sportschau", "zdf"],
   "eng.1": ["skyPl"],
   "uefa.champions": ["daznUcl", "prime", "zdf"],
-  "uefa.europa": ["rtl"],
-  "uefa.europa.conf": ["rtl"],
+  "uefa.europa": ["rtl", "m4"],
+  "uefa.europa.conf": ["rtl", "m4"],
   "ger.dfb_pokal": ["daznFb", "sportschau", "zdf"],
   "eng.fa": ["faCup", "skyPl"],
   "eng.league_cup": ["skyPl"],
@@ -333,7 +362,7 @@ const VIDEO_CHANNELS = {
   "fifa.worldq.uefa": ["sportschau", "zdf", "rtl"],
   "fifa.world": ["sportschau", "zdf"],
   "fifa.friendly": ["sportschau", "zdf", "rtl"],
-  "hun.1": ["mlsz"]
+  "hun.1": ["m4", "mlsz"]
 };
 const CLUB_CHANNEL = { "124": "bvb", "364": "lfc" };
 
@@ -402,48 +431,96 @@ $("#spoilerBtn").addEventListener("click", () => {
 
 /* ================= Navigation ================= */
 // Menue oben: fuehrt immer direkt zur Uebersicht der jeweiligen Ansicht (offene Spiel- oder Teamseiten schliessen, Wettbewerbsliste, heutiger Tag)
+// Metro-Effekt: neue Ansicht gleitet von der Seite herein
+function slideIn(el, dir) {
+  if (!el || !dir) return;
+  el.style.transition = "none"; el.style.transform = `translateX(${dir * 80}px)`; el.style.opacity = "0";
+  void el.offsetWidth; // Startposition festschreiben, dann animieren (ohne requestAnimationFrame, damit nichts unsichtbar haengen bleibt)
+  el.style.transition = "transform .38s cubic-bezier(.1,.9,.2,1), opacity .28s ease-out";
+  el.style.transform = ""; el.style.opacity = "";
+}
+// Ein geoeffneter Wettbewerb bekommt einen eigenen Verlaufseintrag: so fuehrt auch die Zurueck-Geste des Browsers (Wisch vom linken Rand) zur Uebersicht
+let compPushed = false;
+function compPush() { try { history.pushState({ comp: state.compSel }, ""); compPushed = true; } catch {} }
+function compPop() { if (!compPushed) return; compPushed = false; ignorePop++; try { history.back(); } catch { ignorePop--; } }
+function compBack(fromHistory) {
+  if (fromHistory) compPushed = false; else compPop();
+  state.compSel = null; store.set("sr_comp", null); render(true); window.scrollTo(0, 0); slideIn($("#app"), -1);
+}
+if (state.view === "comps" && state.compSel) compPush();
+const VIEW_ORDER = ["teams", "games", "tables", "comps"];
 function goView(v) {
+  const dir = Math.sign(VIEW_ORDER.indexOf(v) - VIEW_ORDER.indexOf(state.view));
+  const overlay = $("#detail").classList.contains("open") || $("#teamview").classList.contains("open");
   if ($("#detail").classList.contains("open")) closeDetail(false);
   if ($("#teamview").classList.contains("open")) closeTeam(false);
+  if (!overlay) compPop(); else compPushed = false;
   if (v === "comps") { state.compSel = null; store.set("sr_comp", null); state.compRound = null; }
   if (v === "games") state.day = new Date();
+  if (v === "tables") { state.tableComp = "ger.1"; store.set("sr_table", "ger.1"); state.tableSub = "table"; store.set("sr_tablesub", "table"); }
   state.view = v; store.set("sr_view", v); render(true); window.scrollTo(0, 0);
+  slideIn($("#app"), dir);
 }
 document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => goView(b.dataset.view)));
 $("#home").addEventListener("click", () => goView("teams"));
-// Wischen nach links oder rechts: in der Spielansicht wechseln die Reiter des Spiels, sonst die Reiter oben (wie bei Windows Phone)
+// Wischen: auf Unterseiten fuehrt rechts zurueck und links zum naechsten Reiter, auf den Hauptseiten wechseln die Reiter oben (wie bei Windows Phone).
+// Die Seite folgt dabei dem Finger und gleitet dann weiter oder federt zurueck.
 (() => {
-  const ORDER = ["teams", "games", "tables", "comps"], DT = ["stats", "lineups", "events", "ticker"];
-  let sx = 0, sy = 0, st = 0, ok = false, horiz = null;
-  const scrollsX = el => { for (let n = el; n && n !== document.body; n = n.parentElement) { if (n.scrollWidth > n.clientWidth + 4 && /(auto|scroll)/.test(getComputedStyle(n).overflowX)) return true; } return false; };
+  const DT = ["stats", "lineups", "events", "ticker"];
+  let sx = 0, sy = 0, st = 0, ok = false, horiz = null, el = null;
+  const scrollsX = n0 => { for (let n = n0; n && n !== document.body; n = n.parentElement) { if (n.scrollWidth > n.clientWidth + 4 && /(auto|scroll)/.test(getComputedStyle(n).overflowX)) return true; } return false; };
+  const target = () => {
+    const d = $("#detail"), t = $("#teamview");
+    if (d.classList.contains("open") && +d.style.zIndex >= +(t.style.zIndex || 0)) return d.querySelector(".dbody");
+    if (t.classList.contains("open")) return t;
+    return $("#app");
+  };
+  const reset = () => { if (!el) return; el.style.transition = "transform .25s cubic-bezier(.1,.9,.2,1), opacity .2s"; el.style.transform = ""; el.style.opacity = ""; };
   document.addEventListener("touchstart", e => {
-    const t = e.touches[0]; sx = t.clientX; sy = t.clientY; st = Date.now(); horiz = null;
+    const t = e.touches[0]; sx = t.clientX; sy = t.clientY; st = Date.now(); horiz = null; el = null;
     ok = e.touches.length === 1 && sx > 18 && sx < window.innerWidth - 18 && !scrollsX(e.target);
   }, { passive: true });
   document.addEventListener("touchmove", e => {
-    if (!ok || horiz !== null) return;
-    const t = e.touches[0], dx = Math.abs(t.clientX - sx), dy = Math.abs(t.clientY - sy);
-    if (dx > 10 || dy > 10) horiz = dx > dy * 1.3;
+    if (!ok) return;
+    const t = e.touches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+    if (horiz === null && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) { horiz = Math.abs(dx) > Math.abs(dy) * 1.3; if (horiz) { el = target(); el.style.transition = "none"; } }
+    if (horiz && el) { el.style.transform = `translateX(${dx * 0.55}px)`; el.style.opacity = String(Math.max(.35, 1 - Math.abs(dx) / 500)); }
   }, { passive: true });
   document.addEventListener("touchend", e => {
     if (!ok || !horiz) return;
     const t = e.changedTouches[0], dx = t.clientX - sx;
-    if (Date.now() - st > 900 || Math.abs(dx) < 50) return;
+    if (Date.now() - st > 900 || Math.abs(dx) < 50) { reset(); return; }
     const dir = dx < 0 ? 1 : -1;
-    if ($("#detail").classList.contains("open") && +$("#detail").style.zIndex >= +($("#teamview").style.zIndex || 0)) {
-      const n = DT.indexOf(detail.tab) + dir;
-      if (n >= 0 && n < DT.length) { detail.tab = DT[n]; renderDetail(); $("#detail").scrollTop = 0; }
+    // Einheitlich ueberall: Wisch nach rechts fuehrt zurueck (Spiel, Team, Wettbewerb), Wisch nach links zeigt den naechsten Reiter
+    const slideOut = (box, close) => {
+      box.style.transition = "transform .2s ease-in, opacity .2s"; box.style.transform = "translateX(100%)"; box.style.opacity = "0";
+      setTimeout(() => { close(); box.style.transition = "none"; box.style.transform = ""; box.style.opacity = ""; if (el) { el.style.transform = ""; el.style.opacity = ""; } }, 200);
+    };
+    if ($("#detail").classList.contains("open") && el === $("#detail .dbody")) {
+      if (dir < 0) { slideOut($("#detail"), () => closeDetail(false)); return; }
+      const n = DT.indexOf(detail.tab) + 1;
+      if (n < DT.length) { detail.tab = DT[n]; renderDetail(); $("#detail").scrollTop = 0; slideIn(el, 1); } else reset();
       return;
     }
-    if ($("#teamview").classList.contains("open")) { if (dir < 0) closeTeam(false); return; }
-    const n = ORDER.indexOf(state.view) + dir;
-    if (n >= 0 && n < ORDER.length) goView(ORDER[n]);
+    if ($("#teamview").classList.contains("open") && el === $("#teamview")) {
+      if (dir < 0) slideOut(el, () => closeTeam(false)); else reset();
+      return;
+    }
+    if (state.view === "comps" && state.compSel && el === $("#app")) {
+      if (dir < 0) { compBack(); return; }
+      const subs = [...document.querySelectorAll("#app [data-compsub]")].map(b => b.dataset.compsub);
+      const n = subs.indexOf(state.compSub || "games") + 1;
+      if (n > 0 && n < subs.length) { state.compSub = subs[n]; store.set("sr_compsub", state.compSub); render(true); window.scrollTo(0, 0); slideIn(el, 1); } else reset();
+      return;
+    }
+    const n = VIEW_ORDER.indexOf(state.view) + dir;
+    if (n >= 0 && n < VIEW_ORDER.length) goView(VIEW_ORDER[n]); else reset();
   }, { passive: true });
 })();
 function paintNav() {
   document.querySelectorAll("nav button").forEach(b => b.classList.toggle("active", b.dataset.view === state.view));
   const a = document.querySelector("nav button.active"), n = document.querySelector("nav");
-  if (a && n) n.scrollTo({ left: Math.max(0, a.offsetLeft - n.offsetLeft - 14), behavior: "smooth" });
+  if (a && n && n.scrollWidth > n.clientWidth) n.scrollTo({ left: Math.max(0, a.offsetLeft - n.offsetLeft - 14), behavior: "smooth" });
 }
 
 /* ================= Spiel-Darstellung ================= */
@@ -515,8 +592,8 @@ document.addEventListener("click", e => {
   const tc = e.target.closest("[data-tablecomp]");
   if (tc) { state.tableComp = tc.dataset.tablecomp; store.set("sr_table", state.tableComp); render(); }
   const cp = e.target.closest("[data-comp]");
-  if (cp) { state.compSel = cp.dataset.comp; store.set("sr_comp", state.compSel); state.compSub = "games"; store.set("sr_compsub", "games"); state.compRound = null; render(true); window.scrollTo(0, 0); return; }
-  if (e.target.closest("[data-compback]")) { state.compSel = null; store.set("sr_comp", null); render(true); return; }
+  if (cp) { state.compSel = cp.dataset.comp; store.set("sr_comp", state.compSel); state.compSub = "games"; store.set("sr_compsub", "games"); state.compRound = null; compPush(); render(true); window.scrollTo(0, 0); slideIn($("#app"), 1); return; }
+  if (e.target.closest("[data-compback]")) { compBack(); return; }
   const cs = e.target.closest("[data-compsub]");
   if (cs) { state.compSub = cs.dataset.compsub; store.set("sr_compsub", state.compSub); render(true); return; }
   const rd = e.target.closest("[data-round]");
@@ -540,12 +617,12 @@ const ALIAS = {
   "St. Pauli":["pauli"], "Brighton & Hove Albion":["brighton"], "West Ham United":["west ham"], "Crystal Palace":["crystal palace","palace"],
   "Newcastle United":["newcastle"],
   "Zalaegerszeg":["zte","zalaegerszeg"], "Győri ETO":["eto"], "Debrecen":["dvsc","debrecen"], "Budapest Honvéd":["honved","kispest"], "Kisvárda":["kisvarda"],
-  "Paks":["paksi","paks"], "Ferencváros":["ferencvarosi","ferencvaros","ftc"], "Puskás Akadémia":["puskas"], "MTK Budapest":["mtk"], "Vasas":["vasas"], "Újpest":["ujpest"], "Nyíregyháza":["nyiregyhaza"], "Leeds United":["leeds"], "Aston Villa":["aston villa"], "Nottingham Forest":["nottingham","forest"]
+  "Paks":["paksi","paks"], "Ferencváros":["ferencvarosi","ferencvaros","ftc","fradi"], "Ferencvaros":["ferencvarosi","ferencvaros","ftc","fradi"], "Puskás Akadémia":["puskas"], "MTK Budapest":["mtk"], "Vasas":["vasas"], "Újpest":["ujpest"], "Nyíregyháza":["nyiregyhaza"], "Leeds United":["leeds"], "Aston Villa":["aston villa"], "Nottingham Forest":["nottingham","forest"]
 };
 const norm = s => String(s || "").toLowerCase().replace(/ß/g, "ss").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/ø/g, "o").replace(/[^a-z0-9]+/g, " ").trim();
 function teamKeys(t) {
   const keys = new Set(ALIAS[t.displayName] || []);
-  for (const src of [t.displayName, t.shortDisplayName, t.location]) {
+  for (const src of [t.displayName, t.shortDisplayName, t.location, DE_NAMES[t.displayName] || ""]) {
     for (const w of norm(src).split(" ")) {
       if (w.length >= 4 && !STOP.has(w)) { keys.add(w); if (TRANSLATE[w]) keys.add(TRANSLATE[w]); }
     }
@@ -580,6 +657,22 @@ async function channelUploads(key) {
   ytMem.set(key, p);
   try { return await p; } finally { setTimeout(() => ytMem.delete(key), 60000); }
 }
+async function searchFallback(ev, keys, kick) {
+  const ck = "sr_ys_" + ev.id, hit = store.get(ck, null);
+  if (hit && (hit.items.length || Date.now() - hit.t < 24 * 3600000)) return hit.items;
+  const byId = {}; keys.forEach((k, i) => { if (CH[k] && !(CH[k].id in byId)) byId[CH[k].id] = [k, i]; });
+  const q = ev.competitions[0].competitors.map(c => deName(c.team)).join(" ");
+  let items = [];
+  try {
+    const url = "https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=25&q=" + encodeURIComponent(q) +
+      "&publishedAfter=" + new Date(kick + 45 * 60000).toISOString() + "&publishedBefore=" + new Date(kick + 4 * 86400000).toISOString() + "&key=" + YT_KEY;
+    const r = await fetch(url); if (!r.ok) return [];
+    const j = await r.json();
+    items = (j.items || []).filter(i => byId[i.snippet.channelId]).map(i => ({ id: i.id.videoId, title: i.snippet.title.replace(/&amp;/g, "&").replace(/&#39;/g, "'").replace(/&quot;/g, '"'), at: i.snippet.publishedAt, label: CH[byId[i.snippet.channelId][0]].label, prio: byId[i.snippet.channelId][1] }));
+  } catch { return []; }
+  store.set(ck, { t: Date.now(), items });
+  return items;
+}
 async function findVideos(ev, slug) {
   const comp = ev.competitions[0];
   const [a, b] = comp.competitors.map(c => c.team);
@@ -593,11 +686,20 @@ async function findVideos(ev, slug) {
     try { items = await channelUploads(key); } catch (e) { found.error = true; continue; }
     for (const v of items) {
       const t = norm(v.title), at = new Date(v.at).getTime();
-      if (at < kick + 45 * 60000 || at > kick + 10 * 86400000) continue;
+      if (at < kick + 45 * 60000 || at > kick + 4 * 86400000) continue;
       if (NEG.test(t) || !POS.test(t)) continue;
       if (!hasKey(t, ka) || !hasKey(t, kb)) continue;
       const score = prio * 10 + (/highlight|zusammenfassung/.test(t) ? 0 : 3);
       found.push({ ...v, label: CH[key].label, score });
+    }
+  }
+  // Aeltere Spiele der Favoriten: Videos sind oft nicht mehr unter den neuesten Uploads, dann gezielt suchen (nur offizielle Kanaele)
+  if (new Set(found.map(v => v.label)).size < 2 && isMine(ev) && Date.now() > kick + 3 * 3600000) {
+    for (const v of await searchFallback(ev, keys, kick)) {
+      const t = norm(v.title), at = new Date(v.at).getTime();
+      if (at > kick + 4 * 86400000) continue;
+      if (NEG.test(t) || !POS.test(t) || !hasKey(t, ka) || !hasKey(t, kb)) continue;
+      found.push({ ...v, score: v.prio * 10 + (/highlight|zusammenfassung/.test(t) ? 0 : 3) });
     }
   }
   const uniq = []; const ids = new Set();
@@ -642,7 +744,8 @@ async function fillVideos(root) {
     const vids = await findVideos(ev, m.dataset.slug);
     if (!document.body.contains(n)) return;
     if (vids.length) {
-      n.innerHTML = vids.map((v, i) => `<a class="vid${i === 0 ? " main" : ""}" href="https://www.youtube.com/watch?v=${esc(v.id)}" target="_blank" rel="noopener">▶ ${i === 0 ? "Zusammenfassung" : ""} <small>${esc(v.label)}${v.sec ? " · " + fmtDur(v.sec) : ""}</small></a>`).join("");
+      const inTile = !!n.closest(".tile");
+      n.innerHTML = vids.map((v, i) => `<a class="vid${i === 0 ? " main" : ""}" href="https://www.youtube.com/watch?v=${esc(v.id)}" target="_blank" rel="noopener">▶ ${i === 0 && !inTile ? "Zusammenfassung " : ""}<small>${esc(v.label)}${v.sec ? " · " + fmtDur(v.sec) : ""}</small></a>`).join("");
     } else {
       const comp = ev.competitions[0];
       const q = encodeURIComponent(comp.competitors.map(c => deName(c.team)).join(" ") + " Highlights");
@@ -803,7 +906,7 @@ async function viewTables() {
   const cur = await Promise.all(COMPS.map(c => c.table ? isCurrent(c.slug) : false));
   const tabs = COMPS.filter((c, i) => c.table && cur[i]);
   if (!tabs.some(c => c.slug === state.tableComp)) state.tableComp = tabs[0].slug;
-  let html = `<div class="seg">${tabs.map(c => `<button data-tablecomp="${c.slug}" class="${c.slug === state.tableComp ? "active" : ""}">${esc(c.name)}</button>`).join("")}</div>`;
+  let html = `<div class="seg">${tabs.map(c => `<button data-tablecomp="${c.slug}" class="${c.slug === state.tableComp ? "active" : ""}"${c.slug === state.tableComp && COMP_COLOR[c.slug] ? ` style="background:${COMP_COLOR[c.slug]}"` : ""}>${esc(c.name)}</button>`).join("")}</div>`;
   const sub = state.tableSub || "table";
   html += `<div class="seg small">${[["table","Tabelle"],["goals","Torschützen"],["assists","Vorlagen"]].map(([k,l]) => `<button data-tablesub="${k}" class="${k === sub ? "active" : ""}">${l}</button>`).join("")}</div>`;
   return html + await statsHTML(state.tableComp, sub);
@@ -855,7 +958,9 @@ async function viewComps() {
     ["Länderturniere", COMPS.filter((c, i) => cur[i])],
     ["Ligen", [COMP_BY["ger.1"], COMP_BY["eng.1"], ...EXTRA]]
   ];
-  return groups.filter(g => g[1].length).map(([t, l]) => `<section class="comp"><h2><span>${t}</span><span></span></h2>${l.map(c => `<button class="crow" data-comp="${c.slug}"><span>${esc(c.name)}</span><span class="chev">›</span></button>`).join("")}</section>`).join("");
+  const PAL = ["#1ba1e2", "#a200ff", "#e51400", "#f09609", "#00aba9", "#8cbf26"];
+  let k = 0;
+  return groups.filter(g => g[1].length).map(([t, l]) => `<section class="comp"><h2><span>${t}</span><span></span></h2><div class="cgrid">${l.map(c => `<button class="ctile" style="background:${COMP_COLOR[c.slug] || PAL[k++ % PAL.length]}" data-comp="${c.slug}"><span>${esc(c.name)}</span></button>`).join("")}</div></section>`).join("");
 }
 // Spiele der letzten und naechsten zwei Monate laden und nach Spieltagen (zusammenhaengende Tage) gruppieren
 async function compRounds(slug) {
@@ -1193,6 +1298,7 @@ window.addEventListener("popstate", () => {
   const d = $("#detail"), t = $("#teamview");
   const dOpen = d.classList.contains("open"), tOpen = t.classList.contains("open");
   if (dOpen && (!tOpen || +d.style.zIndex > +t.style.zIndex)) closeDetail(true); else if (tOpen) closeTeam(true);
+  else if (state.view === "comps" && state.compSel) compBack(true);
 });
 
 /* ================= Teamseite: letzte und naechste Spiele ================= */
