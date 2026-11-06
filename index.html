@@ -87,6 +87,12 @@ footer{color:var(--muted);font-size:13px;text-align:center;padding:8px 14px 24px
 .match .more{float:right;color:var(--muted);font-size:14px}
 #detail{position:fixed;inset:0;z-index:20;background:var(--bg);overflow-y:auto;display:none;-webkit-overflow-scrolling:touch}
 #detail.open{display:block}
+#teamview{position:fixed;inset:0;z-index:20;background:var(--bg);overflow-y:auto;display:none;-webkit-overflow-scrolling:touch}
+#teamview.open{display:block}
+.thead{display:flex;align-items:center;gap:12px;padding:12px 0}.thead img{width:44px;height:44px;object-fit:contain}.thead b{font-size:22px}
+.tlogo{display:inline-flex;padding:8px;margin:-8px;cursor:pointer}
+[data-team]{cursor:pointer}
+.teamhint{font-size:14px;color:var(--muted);text-align:center;margin:-4px 0 12px}
 body.noscroll{overflow:hidden}
 .dhead{position:sticky;top:0;z-index:2;background:rgba(15,17,21,.97);border-bottom:1px solid var(--line);padding:calc(env(safe-area-inset-top) + 8px) 12px 0}
 .dtop{display:flex;align-items:center;gap:10px}
@@ -153,6 +159,7 @@ body.noscroll{overflow:hidden}
 </header>
 <main id="app"><div class="load">Lade Daten …</div></main>
 <div id="detail" role="dialog" aria-modal="true"></div>
+<div id="teamview" role="dialog" aria-modal="true"></div>
 <footer>Ergebnisse: ESPN (inoffizielle Schnittstelle) · Videos: offizielle YouTube-Kanäle</footer>
 
 <script>
@@ -347,7 +354,7 @@ function matchHTML(ev, slug, opts = {}) {
       : `<div class="score"><span>${esc(scoreOf(home))}</span><span>${esc(scoreOf(away))}</span></div>`;
   }
   const winH = !hide && st.state === "post" && home.winner, winA = !hide && st.state === "post" && away.winner;
-  const logo = t => { const u = t.logo || t.logos?.[0]?.href || (t.id ? `https://a.espncdn.com/i/teamlogos/soccer/500/${t.id}.png` : ""); return u ? `<img loading="lazy" src="${esc(u)}" alt="" onerror="this.style.visibility='hidden'">` : `<span style="width:20px"></span>`; };
+  const logo = t => { const u = t.logo || t.logos?.[0]?.href || (t.id ? `https://a.espncdn.com/i/teamlogos/soccer/500/${t.id}.png` : ""); const img = u ? `<img loading="lazy" src="${esc(u)}" alt="" onerror="this.style.visibility='hidden'">` : `<span style="width:20px"></span>`; return t.id && !String(t.id).startsWith("tsdb") ? `<span class="tlogo" data-team="${esc(t.id)}" aria-label="Teamseite">${img}</span>` : img; };
   const dateLine = opts.withDate ? `<div class="sub">${esc(berlin(ev.date, { weekday:"short", day:"2-digit", month:"2-digit" }))} · ${esc((COMP_BY[slug]||{}).name || ev.league?.name || "")}</div>` : "";
   return `<div class="match${fav ? " fav" : ""}${opts.noDetail ? " nodetail" : ""}" data-ev="${esc(ev.id)}" data-slug="${esc(slug)}">
     <div class="row">
@@ -364,10 +371,13 @@ function matchHTML(ev, slug, opts = {}) {
 }
 
 document.addEventListener("click", e => {
+  const tm = e.target.closest("[data-team]");
+  if (tm) { e.preventDefault(); openTeam(tm.dataset.team); return; }
+  if (e.target.closest("[data-closeteam]")) { closeTeam(false); return; }
   const open = e.target.closest(".match");
   if (open && !e.target.closest("a,button") && !open.closest("#detail") && !open.classList.contains("nodetail")) { openDetail(open.dataset.ev, open.dataset.slug); return; }
   const r = e.target.closest("[data-reveal]");
-  if (r) { state.revealed.add(r.dataset.reveal); render(); }
+  if (r) { state.revealed.add(r.dataset.reveal); if (r.closest("#teamview")) renderTeam(); else render(); }
   const t = e.target.closest("[data-showtable]");
   if (t) { state.tablesRevealed = true; render(); }
   const ts = e.target.closest("[data-tablesub]");
@@ -612,7 +622,7 @@ async function statsHTML(slug, sub) {
       if (l.value !== prev) { rank = i + 1; prev = l.value; }
       const team = l.athlete?.team || l.team || {};
       const games = (String(l.displayValue || "").match(/Matches:\s*(\d+)/) || [])[1];
-      return `<div class="lead${MY_IDS.has(team.id) ? " fav" : ""}"><span class="r">${rank}</span>${team.id || team.logos?.[0]?.href ? `<img loading="lazy" src="${esc(team.logos?.[0]?.href || `https://a.espncdn.com/i/teamlogos/soccer/500/${team.id}.png`)}" alt="" onerror="this.style.visibility='hidden'">` : "<span></span>"}<span>${esc(l.athlete?.displayName || "")}<small>${esc(team.displayName ? deName(team) : "")}</small></span><span class="sp">${games ? esc(games) + " Sp." : ""}</span><span class="v">${esc(Math.round(l.value))}</span></div>`;
+      return `<div class="lead${MY_IDS.has(team.id) ? " fav" : ""}"${team.id ? ` data-team="${esc(team.id)}"` : ""}><span class="r">${rank}</span>${team.id || team.logos?.[0]?.href ? `<img loading="lazy" src="${esc(team.logos?.[0]?.href || `https://a.espncdn.com/i/teamlogos/soccer/500/${team.id}.png`)}" alt="" onerror="this.style.visibility='hidden'">` : "<span></span>"}<span>${esc(l.athlete?.displayName || "")}<small>${esc(team.displayName ? deName(team) : "")}</small></span><span class="sp">${games ? esc(games) + " Sp." : ""}</span><span class="v">${esc(Math.round(l.value))}</span></div>`;
     }).join("")}</section><p class="note">${sub === "goals" ? "Tore" : "Torvorlagen"} in diesem Wettbewerb, Saison 2026/27. Quelle: ESPN.</p>`;
   }
   const j = await getJSON(`${ESPN2}${slug}/standings`, 10 * 60000);
@@ -627,7 +637,7 @@ async function statsHTML(slug, sub) {
     entries.sort((a, b) => (+stat(a, "rank") || 99) - (+stat(b, "rank") || 99));
     html += `<section class="comp">${groups.length > 1 ? `<h2><span>${esc(String(g.name || "").replace(/^Group /, "Gruppe ").replace(/^League /, "Liga "))}</span></h2>` : ""}
       <table class="tbl"><thead><tr><th class="r">#</th><th class="t">Team</th><th>Sp</th><th>S</th><th>U</th><th>N</th><th>Tore</th><th>Diff</th><th>Pkt</th></tr></thead><tbody>
-      ${entries.map(e => `<tr class="${MY_IDS.has(e.team.id) ? "fav" : ""}"><td class="r">${esc(stat(e, "rank"))}</td>
+      ${entries.map(e => `<tr class="${MY_IDS.has(e.team.id) ? "fav" : ""}" data-team="${esc(e.team.id)}"><td class="r">${esc(stat(e, "rank"))}</td>
         <td class="t">${e.team.logos?.[0]?.href ? `<img loading="lazy" src="${esc(e.team.logos[0].href)}" alt="">` : ""}<span>${esc(deName(e.team))}</span></td>
         <td>${esc(stat(e, "gamesPlayed"))}</td><td>${esc(stat(e, "wins"))}</td><td>${esc(stat(e, "ties"))}</td><td>${esc(stat(e, "losses"))}</td><td>${esc(stat(e, "pointsFor"))}:${esc(stat(e, "pointsAgainst"))}</td><td>${esc(stat(e, "pointDifferential"))}</td><td><b>${esc(stat(e, "points"))}</b></td></tr>`).join("")}
       </tbody></table></section>`;
@@ -932,10 +942,10 @@ async function renderDetail(force) {
   const hide = st.state !== "pre" && state.spoiler && !state.revealed.has(detail.id);
   const tlogo = t => { const u = t.logo || t.logos?.[0]?.href || `https://a.espncdn.com/i/teamlogos/soccer/500/${t.id}.png`; return `<img src="${esc(u)}" alt="" onerror="this.style.visibility='hidden'">`; };
   box.querySelector(".board").innerHTML = `
-    <div>${tlogo(home.team)}<div class="tn">${esc(deName(home.team))}</div></div>
+    <div data-team="${esc(home.team.id)}">${tlogo(home.team)}<div class="tn">${esc(deName(home.team))}</div></div>
     <div><div class="big">${st.state === "pre" ? "-:-" : hide ? `<button class="reveal" data-reveal="${esc(detail.id)}">Ergebnis zeigen</button>` : `${esc(scoreOf(home))}:${esc(scoreOf(away))}`}</div>
       <div class="st${st.live ? " live" : ""}">${esc(st.state === "pre" ? berlin(evLike.date, { weekday:"short", day:"2-digit", month:"2-digit" }) + ", " + st.label + " Uhr" : st.label)}</div></div>
-    <div>${tlogo(away.team)}<div class="tn">${esc(deName(away.team))}</div></div>`;
+    <div data-team="${esc(away.team.id)}">${tlogo(away.team)}<div class="tn">${esc(deName(away.team))}</div></div>`;
   box.querySelectorAll(".dtabs button").forEach(b => b.classList.toggle("active", b.dataset.dtab === detail.tab));
   const body = box.querySelector(".dbody");
   if (hide && detail.tab !== "lineups") {
@@ -957,19 +967,68 @@ function openDetail(id, slug) {
     <div class="board"></div>
     <div class="dtabs"><button data-dtab="stats">Statistik</button><button data-dtab="lineups">Aufstellung</button><button data-dtab="events">Ereignisse</button><button data-dtab="ticker">Ticker</button></div></div>
     <div class="dbody"><div class="load">Lade Spieldaten …</div></div>`;
-  box.classList.add("open"); document.body.classList.add("noscroll"); box.scrollTop = 0;
+  box.classList.add("open"); document.body.classList.add("noscroll"); box.scrollTop = 0; box.style.zIndex = ++zTop;
   try { history.pushState({ detail: id }, ""); } catch {}
   renderDetail();
 }
 function closeDetail(fromHistory) {
   const box = $("#detail");
   if (!box.classList.contains("open")) return;
-  box.classList.remove("open"); document.body.classList.remove("noscroll");
+  box.classList.remove("open"); if (!$("#teamview").classList.contains("open")) document.body.classList.remove("noscroll");
   clearTimeout(detail.timer); detail.id = null;
-  if (!fromHistory) { try { history.back(); } catch {} }
+  if (!fromHistory) { ignorePop++; try { history.back(); } catch { ignorePop--; } }
   render();
 }
-window.addEventListener("popstate", () => closeDetail(true));
+// Zurueck-Taste schliesst immer die oberste Ansicht (Spiel oder Team)
+let ignorePop = 0;
+window.addEventListener("popstate", () => {
+  if (ignorePop > 0) { ignorePop--; return; }
+  const d = $("#detail"), t = $("#teamview");
+  const dOpen = d.classList.contains("open"), tOpen = t.classList.contains("open");
+  if (dOpen && (!tOpen || +d.style.zIndex > +t.style.zIndex)) closeDetail(true); else if (tOpen) closeTeam(true);
+});
+
+/* ================= Teamseite: letzte und naechste Spiele ================= */
+let zTop = 20;
+const team = { id: null };
+function openTeam(id) {
+  if (!id || String(id).startsWith("tsdb")) return;
+  team.id = id;
+  const box = $("#teamview");
+  box.innerHTML = `<div class="dhead"><div class="dtop"><button class="back" data-closeteam="1">‹ Zurück</button><span class="dcomp">Team</span></div><div class="thead"></div></div><div class="dbody"><div class="load">Lade Spiele …</div></div>`;
+  box.classList.add("open"); document.body.classList.add("noscroll"); box.scrollTop = 0; box.style.zIndex = ++zTop;
+  try { history.pushState({ team: id }, ""); } catch {}
+  renderTeam();
+}
+async function renderTeam() {
+  const box = $("#teamview"), id = team.id;
+  if (!id || !box.classList.contains("open")) return;
+  const [res, fix] = await Promise.allSettled([
+    getJSON(`${ESPN}all/teams/${id}/schedule`, 5 * 60000),
+    getJSON(`${ESPN}all/teams/${id}/schedule?fixture=true`, 30 * 60000)
+  ]);
+  if (team.id !== id) return;
+  const ok = x => x.status === "fulfilled" ? (x.value.events || []) : [];
+  const info = (res.status === "fulfilled" ? res.value.team : null) || (fix.status === "fulfilled" ? fix.value.team : null) || { id };
+  const lg = info.logo || info.logos?.[0]?.href || `https://a.espncdn.com/i/teamlogos/soccer/500/${id}.png`;
+  box.querySelector(".thead").innerHTML = `<img src="${esc(lg)}" alt="" onerror="this.style.visibility='hidden'"><b>${esc(info.displayName ? deName(info) : "Team")}</b>`;
+  const past = ok(res).filter(e => e.league?.slug !== "club.friendly" && statusInfo(e).state === "post").sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+  const next = ok(fix).filter(e => statusInfo(e).state !== "post").sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 3);
+  [...past, ...next].forEach(e => evIndex.set(e.id, e));
+  const y = box.scrollTop;
+  box.querySelector(".dbody").innerHTML = (res.status !== "fulfilled" ? `<div class="err">Ergebnisse konnten nicht geladen werden.</div>` : "") +
+    `<section class="comp"><h2><span>Letzte Spiele</span><span></span></h2>${past.map(e => matchHTML(e, e.league?.slug, { withDate: true })).join("") || `<div class="empty">Keine Spiele gefunden.</div>`}</section>` +
+    `<section class="comp"><h2><span>Nächste Spiele</span><span></span></h2>${next.map(e => matchHTML(e, e.league?.slug, { withDate: true })).join("") || `<div class="empty">Keine Termine.</div>`}</section>`;
+  box.scrollTop = y;
+  fillVideos(box);
+}
+function closeTeam(fromHistory) {
+  const box = $("#teamview");
+  if (!box.classList.contains("open")) return;
+  box.classList.remove("open"); team.id = null;
+  if (!$("#detail").classList.contains("open")) document.body.classList.remove("noscroll");
+  if (!fromHistory) { ignorePop++; try { history.back(); } catch { ignorePop--; } }
+}
 $("#detail").addEventListener("click", e => {
   if (e.target.closest("[data-close]")) { closeDetail(false); return; }
   const t = e.target.closest("[data-dtab]");
