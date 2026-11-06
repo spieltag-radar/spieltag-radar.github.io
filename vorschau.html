@@ -317,6 +317,9 @@ async function isCurrent(slug) {
   store.set(ck, { t: Date.now(), v });
   return v;
 }
+// Markenfarben der Wettbewerbe fuer die Kacheln
+const COMP_COLOR = { "uefa.champions": "#1e3a8a", "uefa.europa": "#f26d00", "uefa.europa.conf": "#16a34a", "uefa.nations": "#0f4c81", "uefa.euroq": "#1d4ed8", "uefa.euro": "#1d4ed8", "fifa.worldq.uefa": "#8a1538", "fifa.world": "#8a1538",
+  "ger.1": "#d20515", "eng.1": "#37003c", "esp.1": "#ff4b44", "ita.1": "#008fd7", "fra.1": "#091c3e", "ned.1": "#f36c21", "por.1": "#00205b", "hun.1": "#52ae32" };
 // Weitere Ligen nur im Reiter "Wettbewerbe" (nicht in "Spiele" und "Tabellen")
 const EXTRA = [
   { slug: "esp.1", name: "La Liga", table: true },
@@ -332,12 +335,12 @@ const COMP_BY = Object.fromEntries([...COMPS, ...EXTRA].map(c => [c.slug, c]));
 const CH = {
   daznUcl:   { id: "UCB-GdMjyokO9lZkKU_oIK6g", label: "DAZN" },
   prime:     { id: "UCK2izXoHvraUFaPMU5B7vMQ", label: "Prime Video" },
-  zdf:       { id: "UClCIWcZNvq15p0Y-E4ToGOw", label: "ZDF" },
-  sportschau:{ id: "UCqrBvmQ2--9BO4hTOedYyoQ", label: "Sportschau" },
+  zdf:       { id: "UClCIWcZNvq15p0Y-E4ToGOw", label: "ZDF", pages: 3 },
+  sportschau:{ id: "UCqrBvmQ2--9BO4hTOedYyoQ", label: "Sportschau", pages: 3 },
   skyPl:     { id: "UC_VsQmcsFWUhGn3DTwiO8bg", label: "Sky" },
   skyBl:     { id: "UCnMoVIRPPjjzWhAUYdjVMLw", label: "Sky" },
   faCup:     { id: "UCChcWqwYXCEs657MQ00qVWA", label: "FA Cup" },
-  rtl:       { id: "UC8WYi3XQXsf-6FNvqoEvxag", label: "RTL" },
+  rtl:       { id: "UC8WYi3XQXsf-6FNvqoEvxag", label: "RTL", pages: 3 },
   daznFb:    { id: "UClBFnQJMlinWDCvfSXj60CA", label: "DAZN" },
   bvb:       { id: "UCK8rTVgp3-MebXkmeJcQb1Q", label: "BVB" },
   lfc:       { id: "UC9LQwHZoucFT94I2h6JOcjw", label: "LFC" },
@@ -428,42 +431,65 @@ $("#spoilerBtn").addEventListener("click", () => {
 
 /* ================= Navigation ================= */
 // Menue oben: fuehrt immer direkt zur Uebersicht der jeweiligen Ansicht (offene Spiel- oder Teamseiten schliessen, Wettbewerbsliste, heutiger Tag)
+// Metro-Effekt: neue Ansicht gleitet von der Seite herein
+function slideIn(el, dir) {
+  if (!el || !dir) return;
+  el.style.transition = "none"; el.style.transform = `translateX(${dir * 80}px)`; el.style.opacity = "0";
+  void el.offsetWidth; // Startposition festschreiben, dann animieren (ohne requestAnimationFrame, damit nichts unsichtbar haengen bleibt)
+  el.style.transition = "transform .38s cubic-bezier(.1,.9,.2,1), opacity .28s ease-out";
+  el.style.transform = ""; el.style.opacity = "";
+}
+const VIEW_ORDER = ["teams", "games", "tables", "comps"];
 function goView(v) {
+  const dir = Math.sign(VIEW_ORDER.indexOf(v) - VIEW_ORDER.indexOf(state.view));
   if ($("#detail").classList.contains("open")) closeDetail(false);
   if ($("#teamview").classList.contains("open")) closeTeam(false);
   if (v === "comps") { state.compSel = null; store.set("sr_comp", null); state.compRound = null; }
   if (v === "games") state.day = new Date();
   state.view = v; store.set("sr_view", v); render(true); window.scrollTo(0, 0);
+  slideIn($("#app"), dir);
 }
 document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => goView(b.dataset.view)));
 $("#home").addEventListener("click", () => goView("teams"));
-// Wischen nach links oder rechts: in der Spielansicht wechseln die Reiter des Spiels, sonst die Reiter oben (wie bei Windows Phone)
+// Wischen nach links oder rechts: in der Spielansicht wechseln die Reiter des Spiels, sonst die Reiter oben (wie bei Windows Phone).
+// Die Seite folgt dabei dem Finger und gleitet dann weiter oder federt zurueck.
 (() => {
-  const ORDER = ["teams", "games", "tables", "comps"], DT = ["stats", "lineups", "events", "ticker"];
-  let sx = 0, sy = 0, st = 0, ok = false, horiz = null;
-  const scrollsX = el => { for (let n = el; n && n !== document.body; n = n.parentElement) { if (n.scrollWidth > n.clientWidth + 4 && /(auto|scroll)/.test(getComputedStyle(n).overflowX)) return true; } return false; };
+  const DT = ["stats", "lineups", "events", "ticker"];
+  let sx = 0, sy = 0, st = 0, ok = false, horiz = null, el = null;
+  const scrollsX = n0 => { for (let n = n0; n && n !== document.body; n = n.parentElement) { if (n.scrollWidth > n.clientWidth + 4 && /(auto|scroll)/.test(getComputedStyle(n).overflowX)) return true; } return false; };
+  const target = () => {
+    const d = $("#detail"), t = $("#teamview");
+    if (d.classList.contains("open") && +d.style.zIndex >= +(t.style.zIndex || 0)) return d.querySelector(".dbody");
+    if (t.classList.contains("open")) return t;
+    return $("#app");
+  };
+  const reset = () => { if (!el) return; el.style.transition = "transform .25s cubic-bezier(.1,.9,.2,1), opacity .2s"; el.style.transform = ""; el.style.opacity = ""; };
   document.addEventListener("touchstart", e => {
-    const t = e.touches[0]; sx = t.clientX; sy = t.clientY; st = Date.now(); horiz = null;
+    const t = e.touches[0]; sx = t.clientX; sy = t.clientY; st = Date.now(); horiz = null; el = null;
     ok = e.touches.length === 1 && sx > 18 && sx < window.innerWidth - 18 && !scrollsX(e.target);
   }, { passive: true });
   document.addEventListener("touchmove", e => {
-    if (!ok || horiz !== null) return;
-    const t = e.touches[0], dx = Math.abs(t.clientX - sx), dy = Math.abs(t.clientY - sy);
-    if (dx > 10 || dy > 10) horiz = dx > dy * 1.3;
+    if (!ok) return;
+    const t = e.touches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+    if (horiz === null && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) { horiz = Math.abs(dx) > Math.abs(dy) * 1.3; if (horiz) { el = target(); el.style.transition = "none"; } }
+    if (horiz && el) { el.style.transform = `translateX(${dx * 0.55}px)`; el.style.opacity = String(Math.max(.35, 1 - Math.abs(dx) / 500)); }
   }, { passive: true });
   document.addEventListener("touchend", e => {
     if (!ok || !horiz) return;
     const t = e.changedTouches[0], dx = t.clientX - sx;
-    if (Date.now() - st > 900 || Math.abs(dx) < 50) return;
+    if (Date.now() - st > 900 || Math.abs(dx) < 50) { reset(); return; }
     const dir = dx < 0 ? 1 : -1;
-    if ($("#detail").classList.contains("open") && +$("#detail").style.zIndex >= +($("#teamview").style.zIndex || 0)) {
+    if ($("#detail").classList.contains("open") && el === $("#detail .dbody")) {
       const n = DT.indexOf(detail.tab) + dir;
-      if (n >= 0 && n < DT.length) { detail.tab = DT[n]; renderDetail(); $("#detail").scrollTop = 0; }
+      if (n >= 0 && n < DT.length) { detail.tab = DT[n]; renderDetail(); $("#detail").scrollTop = 0; slideIn(el, dir); } else reset();
       return;
     }
-    if ($("#teamview").classList.contains("open")) { if (dir < 0) closeTeam(false); return; }
-    const n = ORDER.indexOf(state.view) + dir;
-    if (n >= 0 && n < ORDER.length) goView(ORDER[n]);
+    if ($("#teamview").classList.contains("open") && el === $("#teamview")) {
+      if (dir < 0) { el.style.transition = "transform .2s ease-in, opacity .2s"; el.style.transform = "translateX(100%)"; el.style.opacity = "0"; setTimeout(() => { closeTeam(false); el.style.transition = "none"; el.style.transform = ""; el.style.opacity = ""; }, 200); } else reset();
+      return;
+    }
+    const n = VIEW_ORDER.indexOf(state.view) + dir;
+    if (n >= 0 && n < VIEW_ORDER.length) goView(VIEW_ORDER[n]); else reset();
   }, { passive: true });
 })();
 function paintNav() {
@@ -571,7 +597,7 @@ const ALIAS = {
 const norm = s => String(s || "").toLowerCase().replace(/ß/g, "ss").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/ø/g, "o").replace(/[^a-z0-9]+/g, " ").trim();
 function teamKeys(t) {
   const keys = new Set(ALIAS[t.displayName] || []);
-  for (const src of [t.displayName, t.shortDisplayName, t.location]) {
+  for (const src of [t.displayName, t.shortDisplayName, t.location, DE_NAMES[t.displayName] || ""]) {
     for (const w of norm(src).split(" ")) {
       if (w.length >= 4 && !STOP.has(w)) { keys.add(w); if (TRANSLATE[w]) keys.add(TRANSLATE[w]); }
     }
@@ -606,6 +632,22 @@ async function channelUploads(key) {
   ytMem.set(key, p);
   try { return await p; } finally { setTimeout(() => ytMem.delete(key), 60000); }
 }
+async function searchFallback(ev, keys, kick) {
+  const ck = "sr_ys_" + ev.id, hit = store.get(ck, null);
+  if (hit && (hit.items.length || Date.now() - hit.t < 24 * 3600000)) return hit.items;
+  const byId = {}; keys.forEach((k, i) => { if (CH[k] && !(CH[k].id in byId)) byId[CH[k].id] = [k, i]; });
+  const q = ev.competitions[0].competitors.map(c => deName(c.team)).join(" ");
+  let items = [];
+  try {
+    const url = "https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=25&q=" + encodeURIComponent(q) +
+      "&publishedAfter=" + new Date(kick + 45 * 60000).toISOString() + "&publishedBefore=" + new Date(kick + 4 * 86400000).toISOString() + "&key=" + YT_KEY;
+    const r = await fetch(url); if (!r.ok) return [];
+    const j = await r.json();
+    items = (j.items || []).filter(i => byId[i.snippet.channelId]).map(i => ({ id: i.id.videoId, title: i.snippet.title.replace(/&amp;/g, "&").replace(/&#39;/g, "'").replace(/&quot;/g, '"'), at: i.snippet.publishedAt, label: CH[byId[i.snippet.channelId][0]].label, prio: byId[i.snippet.channelId][1] }));
+  } catch { return []; }
+  store.set(ck, { t: Date.now(), items });
+  return items;
+}
 async function findVideos(ev, slug) {
   const comp = ev.competitions[0];
   const [a, b] = comp.competitors.map(c => c.team);
@@ -619,11 +661,20 @@ async function findVideos(ev, slug) {
     try { items = await channelUploads(key); } catch (e) { found.error = true; continue; }
     for (const v of items) {
       const t = norm(v.title), at = new Date(v.at).getTime();
-      if (at < kick + 45 * 60000 || at > kick + 10 * 86400000) continue;
+      if (at < kick + 45 * 60000 || at > kick + 4 * 86400000) continue;
       if (NEG.test(t) || !POS.test(t)) continue;
       if (!hasKey(t, ka) || !hasKey(t, kb)) continue;
       const score = prio * 10 + (/highlight|zusammenfassung/.test(t) ? 0 : 3);
       found.push({ ...v, label: CH[key].label, score });
+    }
+  }
+  // Aeltere Spiele der Favoriten: Videos sind oft nicht mehr unter den neuesten Uploads, dann gezielt suchen (nur offizielle Kanaele)
+  if (new Set(found.map(v => v.label)).size < 2 && isMine(ev) && Date.now() > kick + 3 * 3600000) {
+    for (const v of await searchFallback(ev, keys, kick)) {
+      const t = norm(v.title), at = new Date(v.at).getTime();
+      if (at > kick + 4 * 86400000) continue;
+      if (NEG.test(t) || !POS.test(t) || !hasKey(t, ka) || !hasKey(t, kb)) continue;
+      found.push({ ...v, score: v.prio * 10 + (/highlight|zusammenfassung/.test(t) ? 0 : 3) });
     }
   }
   const uniq = []; const ids = new Set();
@@ -830,7 +881,7 @@ async function viewTables() {
   const cur = await Promise.all(COMPS.map(c => c.table ? isCurrent(c.slug) : false));
   const tabs = COMPS.filter((c, i) => c.table && cur[i]);
   if (!tabs.some(c => c.slug === state.tableComp)) state.tableComp = tabs[0].slug;
-  let html = `<div class="seg">${tabs.map(c => `<button data-tablecomp="${c.slug}" class="${c.slug === state.tableComp ? "active" : ""}">${esc(c.name)}</button>`).join("")}</div>`;
+  let html = `<div class="seg">${tabs.map(c => `<button data-tablecomp="${c.slug}" class="${c.slug === state.tableComp ? "active" : ""}"${c.slug === state.tableComp && COMP_COLOR[c.slug] ? ` style="background:${COMP_COLOR[c.slug]}"` : ""}>${esc(c.name)}</button>`).join("")}</div>`;
   const sub = state.tableSub || "table";
   html += `<div class="seg small">${[["table","Tabelle"],["goals","Torschützen"],["assists","Vorlagen"]].map(([k,l]) => `<button data-tablesub="${k}" class="${k === sub ? "active" : ""}">${l}</button>`).join("")}</div>`;
   return html + await statsHTML(state.tableComp, sub);
@@ -882,9 +933,9 @@ async function viewComps() {
     ["Länderturniere", COMPS.filter((c, i) => cur[i])],
     ["Ligen", [COMP_BY["ger.1"], COMP_BY["eng.1"], ...EXTRA]]
   ];
-  const PAL = ["#1ba1e2", "#a200ff", "#e51400", "#f09609", "#00aba9", "#8cbf26", "#d80073", "#339933", "#e671b8", "#a05000"];
+  const PAL = ["#1ba1e2", "#a200ff", "#e51400", "#f09609", "#00aba9", "#8cbf26"];
   let k = 0;
-  return groups.filter(g => g[1].length).map(([t, l]) => `<section class="comp"><h2><span>${t}</span><span></span></h2><div class="cgrid">${l.map(c => `<button class="ctile" style="background:${PAL[k++ % PAL.length]}" data-comp="${c.slug}"><span>${esc(c.name)}</span></button>`).join("")}</div></section>`).join("");
+  return groups.filter(g => g[1].length).map(([t, l]) => `<section class="comp"><h2><span>${t}</span><span></span></h2><div class="cgrid">${l.map(c => `<button class="ctile" style="background:${COMP_COLOR[c.slug] || PAL[k++ % PAL.length]}" data-comp="${c.slug}"><span>${esc(c.name)}</span></button>`).join("")}</div></section>`).join("");
 }
 // Spiele der letzten und naechsten zwei Monate laden und nach Spieltagen (zusammenhaengende Tage) gruppieren
 async function compRounds(slug) {
