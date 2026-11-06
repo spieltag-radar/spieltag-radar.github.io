@@ -205,7 +205,14 @@ th,td,.lead,.stat,.pl,.tick,.ev,.crow{border-color:var(--line)}
 .trow .op{font-size:16px;line-height:1.25;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .trow .op small{opacity:.75;font-size:13px}
 .trow .res{font-size:20px;font-weight:300;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
-.rb{display:inline-block;min-width:62px;text-align:center;padding:3px 8px;font-size:18px;font-weight:600;color:#fff;border:1.5px solid rgba(255,255,255,.9)}
+.rb{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;font-size:16px;font-weight:700;color:#fff;border:1.5px solid rgba(255,255,255,.9)}
+.trow.past{grid-template-columns:82px 1fr auto}
+.trow.past .vids{grid-column:2/4}
+.pair{min-width:0}
+.pl2{display:grid;grid-template-columns:26px 1fr auto;gap:9px;align-items:center;padding:2px 0}
+.pl2 span{font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.8}
+.pl2 b{font-size:20px;font-weight:300;font-variant-numeric:tabular-nums;min-width:16px;text-align:right;opacity:.8}
+.pl2.win span,.pl2.win b{font-weight:700;opacity:1}
 .rb.w{background:#15803d}.rb.d{background:#6b7280}.rb.l{background:#b91c1c}
 .trow .vid.yt{background:rgba(0,0,0,.18);font-weight:400;opacity:.9}
 .trow .vids{grid-column:2/5;margin:6px 0 2px;display:flex;flex-wrap:wrap;gap:6px}
@@ -736,14 +743,21 @@ async function viewTeams() {
     const row = (e, isPast) => {
       const c = e.competitions[0].competitors, me = c.find(x => x.team.id === t.id) || c[0], op = c.find(x => x !== me) || c[1];
       const home = me.homeAway === "home", slug = e.league?.slug;
-      const where = home ? "gegen" : (t.id === "481" || t.id === "480" ? "in" : "bei");
-      const hide = isPast && state.spoiler && !state.revealed.has(e.id);
+      const when = `${esc(wd(e.date))}<small>${esc(berlin(e.date, { day: "2-digit", month: "2-digit" }))}</small>`;
+      if (!isPast) {
+        const where = home ? "gegen" : (t.id === "481" || t.id === "480" ? "in" : "bei");
+        return `<div class="trow match" data-ev="${esc(e.id)}" data-slug="${esc(slug)}"><span class="when">${when}</span>${crestOf(op.team, "s")}<span class="op"><small>${where}</small> ${esc(deName(op.team))}</span><span class="res">${esc(hm(e.date))}</span></div>`;
+      }
+      // Vergangenes Spiel: wie eine Anzeigetafel, Heimteam oben, Sieger fett, dazu S/U/N aus Sicht des eigenen Teams
+      const h = c.find(x => x.homeAway === "home") || c[0], a = c.find(x => x.homeAway === "away") || c[1];
+      const hide = state.spoiler && !state.revealed.has(e.id);
       const g1 = parseInt(scoreOf(me), 10), g2 = parseInt(scoreOf(op), 10);
       const out = me.winner ? "w" : op.winner ? "l" : g1 > g2 ? "w" : g1 < g2 ? "l" : "d";
-      const res = isPast ? (hide ? `<button class="reveal" data-reveal="${esc(e.id)}">?</button>` : `<b class="rb ${out}">${esc(scoreOf(me))} : ${esc(scoreOf(op))}</b>`) : esc(hm(e.date));
-      const when = `${esc(wd(e.date))}<small>${esc(berlin(e.date, { day: "2-digit", month: "2-digit" }))}</small>`;
-      return `<div class="trow match" data-ev="${esc(e.id)}" data-slug="${esc(slug)}"><span class="when">${when}</span>${crestOf(op.team, "s")}<span class="op"><small>${where}</small> ${esc(deName(op.team))}</span><span class="res">${res}</span>
-        ${isPast ? `<div class="vids" data-vids="${esc(e.id)}"></div>` : ""}</div>`;
+      const hw = !hide && (h.winner || (!a.winner && +scoreOf(h) > +scoreOf(a))), aw = !hide && (a.winner || (!h.winner && +scoreOf(a) > +scoreOf(h)));
+      const line = (x, win) => `<div class="pl2${win ? " win" : ""}${x === me ? " me" : ""}">${crestOf(x.team, "s")}<span>${esc(deName(x.team))}</span><b>${hide ? "" : esc(scoreOf(x))}</b></div>`;
+      const badge = hide ? `<button class="reveal" data-reveal="${esc(e.id)}">Ergebnis</button>` : `<b class="rb ${out}">${out === "w" ? "S" : out === "l" ? "N" : "U"}</b>`;
+      return `<div class="trow past match" data-ev="${esc(e.id)}" data-slug="${esc(slug)}"><span class="when">${when}</span><div class="pair">${line(h, hw)}${line(a, aw)}</div><span class="res">${badge}</span>
+        <div class="vids" data-vids="${esc(e.id)}"></div></div>`;
     };
     const err = res.status !== "fulfilled" ? `<div class="lbl">Ergebnisse gerade nicht erreichbar</div>` : "";
     return `<div class="tile" style="background:${t.tile};color:${t.fg}"><div class="th" data-team="${esc(t.id)}">${crestOf({ ...info, id: t.id })}<b>${esc(t.name)}</b></div>${err}
