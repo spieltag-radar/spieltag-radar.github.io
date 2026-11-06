@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<meta name="theme-color" content="#0f1115">
+<meta name="theme-color" content="#000000">
 <title>Spieltag-Radar</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%2322c55e'/%3E%3Ccircle cx='50' cy='50' r='18' fill='%230f1115'/%3E%3C/svg%3E">
 <style>
@@ -142,6 +142,92 @@ body.noscroll{overflow:hidden}
 .pn{width:30px;height:30px;border-radius:50%;background:#f8fafc;color:#0f1115;font-weight:800;font-size:16px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.4)}
 .pnm{margin-top:3px;font-size:13px;font-weight:600;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px}
 .pic{font-size:12px;line-height:1}
+/* ================= Design "Metro dunkel" (Windows-Phone-Stil, gewaehlt am 06.11.2026) ================= */
+:root{--bg:#000000;--card:#000000;--card2:#1c1c1c;--line:#262626;--text:#ffffff;--muted:#8c8c8c;--accent:#1ba1e2;--live:#1ba1e2}
+html,body{font-family:"Segoe UI","Segoe WP",Inter,-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text)}
+.comp,.comp>*,.vid,.seg button,.daybar button,.back,.reveal,.err,.spoiler,.tile,.crest,.bars>div,.bars i{border-radius:0!important}
+header{position:relative;background:var(--bg);border:0;padding:calc(env(safe-area-inset-top) + 16px) 0 0}
+.top{padding:0 18px}
+h1{font-size:13px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase}
+h1 span{color:inherit}
+.spoiler{border:0;padding:0;font-size:14px;color:var(--accent);background:none}
+.spoiler .dot{display:none}
+nav{gap:0;margin-top:0;overflow-x:auto;scrollbar-width:none;padding-left:14px}
+nav::-webkit-scrollbar{display:none}
+nav button{flex:none;font-size:44px;font-weight:300;letter-spacing:-1.5px;color:#4a4a4a;padding:0 18px 4px 0;border:0;line-height:1.15}
+nav button.active{color:var(--text);font-weight:300;border:0}
+main{padding:2px 16px calc(env(safe-area-inset-bottom) + 30px)}
+.comp{background:none;border:0;overflow:visible;margin-bottom:12px}
+.comp>h2{background:none;border:0;padding:10px 0 2px;font-size:24px;font-weight:300;letter-spacing:-.3px;color:var(--accent);text-transform:none}
+.comp>h2 span:last-child{font-size:15px;color:var(--muted);align-self:center}
+.comp>.match{padding:8px 0;border:0}
+.match.fav{box-shadow:none}
+.time{font-size:15px;font-weight:400}
+.time.live{color:var(--accent)}.time.live::before{background:var(--accent)}
+.teams div{font-size:18px}
+.teams img{width:22px;height:22px}
+.score{font-weight:300;font-size:22px}
+.vids,.sub{margin-left:62px}
+.vid{background:var(--card2);color:var(--text);border:0;font-size:14px;padding:7px 12px}
+.vid.main{background:var(--accent);color:#fff;font-weight:500}
+.reveal{background:none;border:2px solid var(--text);color:var(--text);font-size:14px}
+.daybar button,.back{background:none;border:2px solid var(--text);color:var(--text)}
+.seg{gap:18px;margin:0 0 10px;scrollbar-width:none}.seg::-webkit-scrollbar{display:none}
+.seg button{background:none;border:0;padding:4px 0;color:#5a5a5a;font-size:24px;font-weight:300;letter-spacing:-.4px}
+.seg button.active{background:none;color:var(--text);font-weight:300}
+.seg.small{gap:16px}.seg.small button{font-size:17px;padding:2px 0;font-weight:400}
+.seg.small button.active{color:var(--accent);font-weight:400}
+.err{background:#3a1212;border:0;color:#ffb4b4}
+tr.fav td,.lead.fav,.tick.key{background:rgba(27,161,226,.13)}
+th,td,.lead,.stat,.pl,.tick,.ev,.crow{border-color:var(--line)}
+.ev.away{background:rgba(255,255,255,.03)}
+.lineup h4{background:none;font-size:20px;font-weight:300;color:var(--accent);border:0;padding:12px 0 4px}
+.crow{font-size:22px;font-weight:300;padding:12px 0;border:0;color:var(--text)}
+.ctop b{font-size:28px;font-weight:300}
+#detail,#teamview{background:var(--bg)}
+.dhead{background:var(--bg);border:0;padding:calc(env(safe-area-inset-top) + 12px) 16px 0}
+.dtabs{overflow-x:auto;scrollbar-width:none;gap:0}
+.dtabs button{flex:none;font-size:26px;font-weight:300;color:#4a4a4a;padding:4px 16px 6px 0;border:0}
+.dtabs button.active{color:var(--text);font-weight:300;border:0}
+.board .big{font-weight:300}
+.thead b{font-size:30px;font-weight:300}
+.bars .h{background:var(--accent)}.bars .a{background:#8c8c8c}
+/* Startseite im Kachel-Stil */
+.tile{position:relative;padding:14px 14px 8px;margin-bottom:10px}
+.tile .th{display:flex;align-items:center;gap:12px;padding-bottom:6px;cursor:pointer}
+.tile .th b{font-size:28px;font-weight:300;letter-spacing:-.6px;line-height:1.1}
+.crest{width:40px;height:40px;background:#fff;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.crest img{width:32px;height:32px;object-fit:contain}
+.crest.s{width:26px;height:26px}.crest.s img{width:21px;height:21px}
+.tile .lbl{font-size:14px;letter-spacing:.2px;opacity:.75;margin:10px 0 2px;font-weight:600}
+.trow{display:grid;grid-template-columns:82px 26px 1fr auto;column-gap:10px;align-items:center;padding:7px 0;border-top:1px solid rgba(127,127,127,.28);cursor:pointer}
+.trow .when{font-size:14px;line-height:1.2}.trow .when small{display:block;font-size:12px;opacity:.75}
+.trow .op{font-size:16px;line-height:1.25;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trow .op small{opacity:.75;font-size:13px}
+.trow .res{font-size:20px;font-weight:300;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.rb{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;font-size:16px;font-weight:700;color:#fff;border:1.5px solid rgba(255,255,255,.9)}
+.trow.past{grid-template-columns:82px 1fr auto}
+.trow.past .vids{grid-column:2/4}
+.pair{min-width:0}
+.pl2{display:grid;grid-template-columns:26px 1fr auto;gap:9px;align-items:center;padding:2px 0}
+.pl2 span{font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.8}
+.pl2 b{font-size:20px;font-weight:300;font-variant-numeric:tabular-nums;min-width:16px;text-align:right;opacity:.8}
+.pl2.win span,.pl2.win b{font-weight:700;opacity:1}
+.rb.w{background:#15803d}.rb.d{background:#6b7280}.rb.l{background:#b91c1c}
+.trow .vid.yt{background:rgba(0,0,0,.18);font-weight:400;opacity:.9}
+.trow .vids{grid-column:2/5;margin:6px 0 2px;display:flex;flex-wrap:wrap;gap:6px}
+.trow .vid{background:rgba(0,0,0,.28);color:inherit;font-size:13px;padding:5px 9px;font-weight:500}
+.trow .vid.main{background:rgba(0,0,0,.45)}
+.trow .novid,.trow .novid a{color:inherit;opacity:.75;font-size:12px}
+.trow .reveal{border-color:currentColor;color:inherit;padding:2px 8px;font-size:13px}
+.tile.match,.trow.match{border-bottom:0}
+.tile.today{background:var(--accent);color:#fff;cursor:pointer}
+.tile.today .big{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;text-align:center}
+.tile.today .big .tn{font-size:16px;margin-top:6px}
+.tile.today .sc2{font-size:34px;font-weight:300;font-variant-numeric:tabular-nums}
+.tile.today .meta{font-size:13px;opacity:.9;margin-bottom:8px}
+.tile.today .vids{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 2px}
+.tile.today .vid{background:rgba(0,0,0,.28);color:#fff}
 </style>
 </head>
 <body>
@@ -151,7 +237,7 @@ body.noscroll{overflow:hidden}
     <button id="spoilerBtn" class="spoiler" aria-pressed="false"><span class="dot"></span><span id="spoilerTxt">Spoiler-Schutz aus</span></button>
   </div>
   <nav>
-    <button data-view="teams" class="active">Meine Teams</button>
+    <button data-view="teams" class="active">Start</button>
     <button data-view="games">Spiele</button>
     <button data-view="tables">Tabellen</button>
     <button data-view="comps">Wettbewerbe</button>
@@ -169,10 +255,10 @@ const YT_KEY = "AIzaSyCt_dOwmehfwRVgKHdUTwvmjQjvQF1Xw5U"; // nur fuer spieltag-r
 const ESPN = "https://site.api.espn.com/apis/site/v2/sports/soccer/";
 const ESPN2 = "https://site.api.espn.com/apis/v2/sports/soccer/";
 const MY_TEAMS = [
-  { id: "124", name: "Borussia Dortmund", color: "var(--bvb)" },
-  { id: "364", name: "FC Liverpool", color: "var(--lfc)" },
-  { id: "481", name: "Deutschland", color: "#e5e7eb" },
-  { id: "480", name: "Ungarn", color: "#16a34a" }
+  { id: "124", name: "Borussia Dortmund", short: "dortmund", color: "var(--bvb)", tile: "#e3b800", fg: "#111" },
+  { id: "364", name: "FC Liverpool", short: "liverpool", color: "var(--lfc)", tile: "#c8102e", fg: "#fff" },
+  { id: "481", name: "Deutschland", short: "deutschland", color: "#e5e7eb", tile: "#f2f2f2", fg: "#111" },
+  { id: "480", name: "Ungarn", short: "ungarn", color: "#16a34a", tile: "#2e7d32", fg: "#fff" }
 ];
 const MY_IDS = new Set(MY_TEAMS.map(t => t.id));
 // Wettbewerbe: onlyMine = nur Spiele von BVB/Liverpool anzeigen
@@ -325,7 +411,40 @@ function goView(v) {
 }
 document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => goView(b.dataset.view)));
 $("#home").addEventListener("click", () => goView("teams"));
-function paintNav() { document.querySelectorAll("nav button").forEach(b => b.classList.toggle("active", b.dataset.view === state.view)); }
+// Wischen nach links oder rechts: in der Spielansicht wechseln die Reiter des Spiels, sonst die Reiter oben (wie bei Windows Phone)
+(() => {
+  const ORDER = ["teams", "games", "tables", "comps"], DT = ["stats", "lineups", "events", "ticker"];
+  let sx = 0, sy = 0, st = 0, ok = false, horiz = null;
+  const scrollsX = el => { for (let n = el; n && n !== document.body; n = n.parentElement) { if (n.scrollWidth > n.clientWidth + 4 && /(auto|scroll)/.test(getComputedStyle(n).overflowX)) return true; } return false; };
+  document.addEventListener("touchstart", e => {
+    const t = e.touches[0]; sx = t.clientX; sy = t.clientY; st = Date.now(); horiz = null;
+    ok = e.touches.length === 1 && sx > 18 && sx < window.innerWidth - 18 && !scrollsX(e.target);
+  }, { passive: true });
+  document.addEventListener("touchmove", e => {
+    if (!ok || horiz !== null) return;
+    const t = e.touches[0], dx = Math.abs(t.clientX - sx), dy = Math.abs(t.clientY - sy);
+    if (dx > 10 || dy > 10) horiz = dx > dy * 1.3;
+  }, { passive: true });
+  document.addEventListener("touchend", e => {
+    if (!ok || !horiz) return;
+    const t = e.changedTouches[0], dx = t.clientX - sx;
+    if (Date.now() - st > 900 || Math.abs(dx) < 50) return;
+    const dir = dx < 0 ? 1 : -1;
+    if ($("#detail").classList.contains("open") && +$("#detail").style.zIndex >= +($("#teamview").style.zIndex || 0)) {
+      const n = DT.indexOf(detail.tab) + dir;
+      if (n >= 0 && n < DT.length) { detail.tab = DT[n]; renderDetail(); $("#detail").scrollTop = 0; }
+      return;
+    }
+    if ($("#teamview").classList.contains("open")) { if (dir < 0) closeTeam(false); return; }
+    const n = ORDER.indexOf(state.view) + dir;
+    if (n >= 0 && n < ORDER.length) goView(ORDER[n]);
+  }, { passive: true });
+})();
+function paintNav() {
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("active", b.dataset.view === state.view));
+  const a = document.querySelector("nav button.active"), n = document.querySelector("nav");
+  if (a && n) n.scrollTo({ left: Math.max(0, a.offsetLeft - n.offsetLeft - 14), behavior: "smooth" });
+}
 
 /* ================= Spiel-Darstellung ================= */
 function statusInfo(ev) {
@@ -363,7 +482,7 @@ function matchHTML(ev, slug, opts = {}) {
   }
   const winH = !hide && st.state === "post" && home.winner, winA = !hide && st.state === "post" && away.winner;
   const logo = t => { const u = t.logo || t.logos?.[0]?.href || (t.id ? `https://a.espncdn.com/i/teamlogos/soccer/500/${t.id}.png` : ""); const img = u ? `<img loading="lazy" src="${esc(u)}" alt="" onerror="this.style.visibility='hidden'">` : `<span style="width:20px"></span>`; return t.id ? `<span class="tlogo" data-team="${esc(t.id)}" aria-label="Teamseite">${img}</span>` : img; };
-  const dateLine = opts.withDate ? `<div class="sub">${esc(berlin(ev.date, { weekday:"short", day:"2-digit", month:"2-digit" }))} · ${esc((COMP_BY[slug]||{}).name || ev.league?.name || "")}</div>` : "";
+  const dateLine = opts.withDate ? `<div class="sub">${esc(berlin(ev.date, { weekday:"long", day:"2-digit", month:"2-digit" }))} · ${esc((COMP_BY[slug]||{}).name || ev.league?.name || "")}</div>` : "";
   return `<div class="match${fav ? " fav" : ""}${opts.noDetail ? " nodetail" : ""}" data-ev="${esc(ev.id)}" data-slug="${esc(slug)}">
     <div class="row">
       <div class="time${st.live ? " live" : ""}">${esc(st.label)}</div>
@@ -379,6 +498,9 @@ function matchHTML(ev, slug, opts = {}) {
 }
 
 document.addEventListener("click", e => {
+  const gv = e.target.closest("[data-goview]");
+  if (gv) { goView(gv.dataset.goview); return; }
+  if (e.target.closest("[data-spoilertile]")) { $("#spoilerBtn").click(); return; }
   const tm = e.target.closest("[data-team]");
   if (tm) { e.preventDefault(); openTeam(tm.dataset.team); return; }
   if (e.target.closest("[data-closeteam]")) { closeTeam(false); return; }
@@ -524,7 +646,10 @@ async function fillVideos(root) {
     } else {
       const comp = ev.competitions[0];
       const q = encodeURIComponent(comp.competitors.map(c => deName(c.team)).join(" ") + " Highlights");
-      n.innerHTML = `<span class="novid">${vids.error ? "Videosuche gerade nicht erreichbar." : "Noch keine Zusammenfassung gefunden."} <a href="https://www.youtube.com/results?search_query=${q}" target="_blank" rel="noopener">YouTube-Suche</a> (Vorschaubilder können das Ergebnis verraten)</span>`;
+      const yt = `https://www.youtube.com/results?search_query=${q}`;
+      n.innerHTML = n.closest(".tile")
+        ? `<a class="vid yt" href="${yt}" target="_blank" rel="noopener">▶ YouTube-Suche</a>`
+        : `<span class="novid">${vids.error ? "Videosuche nicht erreichbar" : "Kein Video gefunden"} · <a href="${yt}" target="_blank" rel="noopener">YouTube-Suche</a>${state.spoiler ? " (Vorschaubilder können das Ergebnis verraten)" : ""}</span>`;
     }
   }));
 }
@@ -578,8 +703,70 @@ async function favoritesNext() {
   return `<section class="comp"><h2><span>Nächste Spiele meiner Favoriten</span><span></span></h2>${items.map(e => matchHTML(e, e.league?.slug, { withDate: true })).join("")}</section>`;
 }
 
-/* ================= Ansicht: Meine Teams ================= */
+/* ================= Ansicht: Start (Kacheln) ================= */
+const wd = iso => berlin(iso, { weekday: "long" });
+const hm = iso => berlin(iso, { hour: "2-digit", minute: "2-digit" });
 async function viewTeams() {
+  const todayStr = ymd(new Date());
+  const todays = await Promise.allSettled(COMPS.map(c => scoreboard(c.slug, todayStr)));
+  const today = [];
+  todays.forEach((r, i) => { if (r.status === "fulfilled") r.value.filter(isMine).forEach(e => { evIndex.set(e.id, e); today.push([e, COMPS[i].slug]); }); });
+  if (today.some(([e]) => statusInfo(e).live)) state.hasLive = true;
+  today.sort((a, b) => (statusInfo(b[0]).live - statusInfo(a[0]).live) || (new Date(a[0].date) - new Date(b[0].date)));
+  const crestOf = (t, cls = "") => { const u = t.logo || t.logos?.[0]?.href || (t.id ? `https://a.espncdn.com/i/teamlogos/soccer/500/${t.id}.png` : ""); return `<span class="crest ${cls}">${u ? `<img loading="lazy" src="${esc(u)}" alt="" onerror="this.style.visibility='hidden'">` : ""}</span>`; };
+  let html = "";
+  // 1. Heute: Spiele der Favoriten als breite Kacheln
+  if (today.length) {
+    html += `<section class="comp"><h2><span>Heute</span><span>${today.some(([e]) => statusInfo(e).live) ? "Live" : ""}</span></h2>`;
+    for (const [e, slug] of today) {
+      const c = e.competitions[0].competitors, h = c.find(x => x.homeAway === "home") || c[0], a = c.find(x => x.homeAway === "away") || c[1];
+      const st = statusInfo(e), hide = st.state !== "pre" && state.spoiler && !state.revealed.has(e.id);
+      const mid = st.state === "pre" ? esc(hm(e.date)) : hide ? `<button class="reveal" data-reveal="${esc(e.id)}">Ergebnis</button>` : `${esc(scoreOf(h))} : ${esc(scoreOf(a))}`;
+      html += `<div class="tile today match" data-ev="${esc(e.id)}" data-slug="${esc(slug)}"><div class="meta">${esc((COMP_BY[slug] || {}).name || "")} · ${esc(st.state === "pre" ? "Anpfiff " + hm(e.date) + " Uhr" : st.label)}</div>
+        <div class="big"><div>${crestOf(h.team)}<div class="tn">${esc(deName(h.team))}</div></div><div class="sc2">${mid}</div><div>${crestOf(a.team)}<div class="tn">${esc(deName(a.team))}</div></div></div>
+        ${st.state === "post" ? `<div class="vids" data-vids="${esc(e.id)}" style="margin:8px 0 0"></div>` : ""}</div>`;
+    }
+    html += `</section>`;
+  }
+  // 2. Je Favorit eine Kachel: letzte 3 und naechste 3 Spiele
+  const todayIds = new Set(today.map(([e]) => e.id));
+  const blocks = await Promise.all(MY_TEAMS.map(async t => {
+    const [res, fix] = await Promise.allSettled([
+      getJSON(`${ESPN}all/teams/${t.id}/schedule`, 5 * 60000),
+      getJSON(`${ESPN}all/teams/${t.id}/schedule?fixture=true`, 30 * 60000)
+    ]);
+    const ok = x => x.status === "fulfilled" ? (x.value.events || []) : [];
+    const info = (res.status === "fulfilled" ? res.value.team : null) || { id: t.id };
+    const past = ok(res).filter(e => e.league?.slug !== "club.friendly" && statusInfo(e).state === "post" && !todayIds.has(e.id)).sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 3);
+    const next = ok(fix).filter(e => statusInfo(e).state === "pre" && !todayIds.has(e.id)).sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 3);
+    [...past, ...next].forEach(e => evIndex.set(e.id, e));
+    const row = (e, isPast) => {
+      const c = e.competitions[0].competitors, me = c.find(x => x.team.id === t.id) || c[0], op = c.find(x => x !== me) || c[1];
+      const home = me.homeAway === "home", slug = e.league?.slug;
+      const when = `${esc(wd(e.date))}<small>${esc(berlin(e.date, { day: "2-digit", month: "2-digit" }))}</small>`;
+      if (!isPast) {
+        const where = home ? "gegen" : (t.id === "481" || t.id === "480" ? "in" : "bei");
+        return `<div class="trow match" data-ev="${esc(e.id)}" data-slug="${esc(slug)}"><span class="when">${when}</span>${crestOf(op.team, "s")}<span class="op"><small>${where}</small> ${esc(deName(op.team))}</span><span class="res">${esc(hm(e.date))}</span></div>`;
+      }
+      // Vergangenes Spiel: wie eine Anzeigetafel, Heimteam oben, Sieger fett, dazu S/U/N aus Sicht des eigenen Teams
+      const h = c.find(x => x.homeAway === "home") || c[0], a = c.find(x => x.homeAway === "away") || c[1];
+      const hide = state.spoiler && !state.revealed.has(e.id);
+      const g1 = parseInt(scoreOf(me), 10), g2 = parseInt(scoreOf(op), 10);
+      const out = me.winner ? "w" : op.winner ? "l" : g1 > g2 ? "w" : g1 < g2 ? "l" : "d";
+      const hw = !hide && (h.winner || (!a.winner && +scoreOf(h) > +scoreOf(a))), aw = !hide && (a.winner || (!h.winner && +scoreOf(a) > +scoreOf(h)));
+      const line = (x, win) => `<div class="pl2${win ? " win" : ""}${x === me ? " me" : ""}">${crestOf(x.team, "s")}<span>${esc(deName(x.team))}</span><b>${hide ? "" : esc(scoreOf(x))}</b></div>`;
+      const badge = hide ? `<button class="reveal" data-reveal="${esc(e.id)}">Ergebnis</button>` : `<b class="rb ${out}">${out === "w" ? "S" : out === "l" ? "N" : "U"}</b>`;
+      return `<div class="trow past match" data-ev="${esc(e.id)}" data-slug="${esc(slug)}"><span class="when">${when}</span><div class="pair">${line(h, hw)}${line(a, aw)}</div><span class="res">${badge}</span>
+        <div class="vids" data-vids="${esc(e.id)}"></div></div>`;
+    };
+    const err = res.status !== "fulfilled" ? `<div class="lbl">Ergebnisse gerade nicht erreichbar</div>` : "";
+    return `<div class="tile" style="background:${t.tile};color:${t.fg}"><div class="th" data-team="${esc(t.id)}">${crestOf({ ...info, id: t.id })}<b>${esc(t.name)}</b></div>${err}
+      <div class="lbl">Zuletzt</div>${past.map(e => row(e, true)).join("") || `<div class="trow"><span class="when">Keine Spiele</span></div>`}
+      <div class="lbl">Als Nächstes</div>${next.map(e => row(e, false)).join("") || `<div class="trow"><span class="when">Keine Termine</span></div>`}</div>`;
+  }));
+  return html + `<section class="comp"><h2><span>Meine Teams</span><span></span></h2>${blocks.join("")}</section>`;
+}
+async function viewTeamsOld() {
   const todayStr = ymd(new Date());
   const live = [];
   const todays = await Promise.allSettled(COMPS.map(c => scoreboard(c.slug, todayStr)));
@@ -708,7 +895,7 @@ async function compPage(slug) {
   if (state.compRound == null || state.compRoundFor !== slug) { state.compRound = defaultRound(rounds); state.compRoundFor = slug; }
   state.compRound = Math.min(Math.max(state.compRound, 0), rounds.length - 1);
   const r = rounds[state.compRound];
-  const f = e => berlin(e.date, { weekday: "short", day: "2-digit", month: "2-digit" });
+  const f = e => berlin(e.date, { weekday: "long", day: "2-digit", month: "2-digit" });
   const a = f(r[0]), b = f(r[r.length - 1]);
   html += `<div class="daybar"><button data-round="-1" aria-label="Vorige Runde"${state.compRound === 0 ? " disabled" : ""}>‹</button>
     <div class="label"><b>${esc(a === b ? a : a + " bis " + b)}</b><small>${r.length} Spiel${r.length === 1 ? "" : "e"}</small></div>
@@ -964,7 +1151,7 @@ async function renderDetail(force) {
   box.querySelector(".board").innerHTML = `
     <div data-team="${esc(home.team.id)}">${tlogo(home.team)}<div class="tn">${esc(deName(home.team))}</div></div>
     <div><div class="big">${st.state === "pre" ? "-:-" : hide ? `<button class="reveal" data-reveal="${esc(detail.id)}">Ergebnis zeigen</button>` : `${esc(scoreOf(home))}:${esc(scoreOf(away))}`}</div>
-      <div class="st${st.live ? " live" : ""}">${esc(st.state === "pre" ? berlin(evLike.date, { weekday:"short", day:"2-digit", month:"2-digit" }) + ", " + st.label + " Uhr" : st.label)}</div></div>
+      <div class="st${st.live ? " live" : ""}">${esc(st.state === "pre" ? berlin(evLike.date, { weekday:"long", day:"2-digit", month:"2-digit" }) + ", " + st.label + " Uhr" : st.label)}</div></div>
     <div data-team="${esc(away.team.id)}">${tlogo(away.team)}<div class="tn">${esc(deName(away.team))}</div></div>`;
   box.querySelectorAll(".dtabs button").forEach(b => b.classList.toggle("active", b.dataset.dtab === detail.tab));
   const body = box.querySelector(".dbody");
