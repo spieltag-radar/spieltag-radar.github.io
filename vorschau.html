@@ -184,7 +184,7 @@ th,td,.lead,.stat,.pl,.tick,.ev,.crow{border-color:var(--line)}
 .lineup h4{background:none;font-size:20px;font-weight:300;color:var(--accent);border:0;padding:12px 0 4px}
 .crow{font-size:22px;font-weight:300;padding:12px 0;border:0;color:var(--text)}
 .ctop b{font-size:28px;font-weight:300}
-#detail,#teamview{background:var(--bg)}
+#detail,#teamview{background:var(--bg);overflow-x:hidden}
 .dhead{background:var(--bg);border:0;padding:calc(env(safe-area-inset-top) + 12px) 16px 0}
 .dtabs{overflow-x:auto;scrollbar-width:none;gap:0}
 .dtabs button{flex:none;font-size:26px;font-weight:300;color:#4a4a4a;padding:4px 16px 6px 0;border:0}
@@ -457,12 +457,13 @@ function goView(v) {
   if (!overlay) compPop(); else compPushed = false;
   if (v === "comps") { state.compSel = null; store.set("sr_comp", null); state.compRound = null; }
   if (v === "games") state.day = new Date();
+  if (v === "tables") { state.tableComp = "ger.1"; store.set("sr_table", "ger.1"); state.tableSub = "table"; store.set("sr_tablesub", "table"); }
   state.view = v; store.set("sr_view", v); render(true); window.scrollTo(0, 0);
   slideIn($("#app"), dir);
 }
 document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => goView(b.dataset.view)));
 $("#home").addEventListener("click", () => goView("teams"));
-// Wischen nach links oder rechts: in der Spielansicht wechseln die Reiter des Spiels, sonst die Reiter oben (wie bei Windows Phone).
+// Wischen: auf Unterseiten fuehrt rechts zurueck und links zum naechsten Reiter, auf den Hauptseiten wechseln die Reiter oben (wie bei Windows Phone).
 // Die Seite folgt dabei dem Finger und gleitet dann weiter oder federt zurueck.
 (() => {
   const DT = ["stats", "lineups", "events", "ticker"];
@@ -490,18 +491,26 @@ $("#home").addEventListener("click", () => goView("teams"));
     const t = e.changedTouches[0], dx = t.clientX - sx;
     if (Date.now() - st > 900 || Math.abs(dx) < 50) { reset(); return; }
     const dir = dx < 0 ? 1 : -1;
+    // Einheitlich ueberall: Wisch nach rechts fuehrt zurueck (Spiel, Team, Wettbewerb), Wisch nach links zeigt den naechsten Reiter
+    const slideOut = (box, close) => {
+      box.style.transition = "transform .2s ease-in, opacity .2s"; box.style.transform = "translateX(100%)"; box.style.opacity = "0";
+      setTimeout(() => { close(); box.style.transition = "none"; box.style.transform = ""; box.style.opacity = ""; if (el) { el.style.transform = ""; el.style.opacity = ""; } }, 200);
+    };
     if ($("#detail").classList.contains("open") && el === $("#detail .dbody")) {
-      const n = DT.indexOf(detail.tab) + dir;
-      if (n >= 0 && n < DT.length) { detail.tab = DT[n]; renderDetail(); $("#detail").scrollTop = 0; slideIn(el, dir); } else reset();
+      if (dir < 0) { slideOut($("#detail"), () => closeDetail(false)); return; }
+      const n = DT.indexOf(detail.tab) + 1;
+      if (n < DT.length) { detail.tab = DT[n]; renderDetail(); $("#detail").scrollTop = 0; slideIn(el, 1); } else reset();
       return;
     }
     if ($("#teamview").classList.contains("open") && el === $("#teamview")) {
-      if (dir < 0) { el.style.transition = "transform .2s ease-in, opacity .2s"; el.style.transform = "translateX(100%)"; el.style.opacity = "0"; setTimeout(() => { closeTeam(false); el.style.transition = "none"; el.style.transform = ""; el.style.opacity = ""; }, 200); } else reset();
+      if (dir < 0) slideOut(el, () => closeTeam(false)); else reset();
       return;
     }
-    // In einem geoeffneten Wettbewerb: nach rechts wischen fuehrt zurueck zur Wettbewerbe-Uebersicht
     if (state.view === "comps" && state.compSel && el === $("#app")) {
-      if (dir < 0) compBack(); else reset();
+      if (dir < 0) { compBack(); return; }
+      const subs = [...document.querySelectorAll("#app [data-compsub]")].map(b => b.dataset.compsub);
+      const n = subs.indexOf(state.compSub || "games") + 1;
+      if (n > 0 && n < subs.length) { state.compSub = subs[n]; store.set("sr_compsub", state.compSub); render(true); window.scrollTo(0, 0); slideIn(el, 1); } else reset();
       return;
     }
     const n = VIEW_ORDER.indexOf(state.view) + dir;
