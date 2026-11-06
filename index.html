@@ -22,7 +22,7 @@ h1 span{color:var(--accent)}
 .spoiler .dot{width:10px;height:10px;border-radius:50%;background:#555}
 .spoiler.on .dot{background:var(--accent)}
 nav{display:flex;gap:4px;margin-top:10px}
-nav button{flex:1;background:none;border:none;color:var(--muted);padding:10px 4px;font-size:17px;border-bottom:2px solid transparent}
+nav button{flex:1 1 auto;background:none;border:none;color:var(--muted);padding:10px 2px;font-size:16px;white-space:nowrap;border-bottom:2px solid transparent}
 nav button.active{color:var(--text);border-bottom-color:var(--accent);font-weight:600}
 main{padding:12px 12px calc(env(safe-area-inset-bottom) + 30px);max-width:720px;margin:0 auto}
 .daybar{display:flex;align-items:center;justify-content:space-between;margin:2px 0 12px}
@@ -78,6 +78,10 @@ td.r{color:var(--muted);width:28px}
 .status{font-size:14px;color:var(--muted);text-align:center;margin-top:16px}
 .err{background:#3a1d1d;border:1px solid #5b2a2a;color:#fecaca;border-radius:10px;padding:10px;margin-bottom:12px;font-size:16px}
 .load{color:var(--muted);text-align:center;padding:24px}
+.crow{display:flex;width:100%;justify-content:space-between;align-items:center;background:none;border:none;border-bottom:1px solid var(--line);color:var(--text);padding:14px 12px;font-size:18px;text-align:left;font-family:inherit}
+.crow:last-child{border-bottom:none}.crow .chev{color:var(--muted);font-size:22px}
+.ctop{display:flex;align-items:center;gap:12px;margin:0 0 12px}.ctop b{font-size:20px}
+.daybar button:disabled{opacity:.3}
 footer{color:var(--muted);font-size:13px;text-align:center;padding:8px 14px 24px}
 .match{cursor:pointer}
 .match .more{float:right;color:var(--muted);font-size:14px}
@@ -144,6 +148,7 @@ body.noscroll{overflow:hidden}
     <button data-view="teams" class="active">Meine Teams</button>
     <button data-view="games">Spiele</button>
     <button data-view="tables">Tabellen</button>
+    <button data-view="comps">Wettbewerbe</button>
   </nav>
 </header>
 <main id="app"><div class="load">Lade Daten …</div></main>
@@ -194,7 +199,15 @@ async function isCurrent(slug) {
   store.set(ck, { t: Date.now(), v });
   return v;
 }
-const COMP_BY = Object.fromEntries(COMPS.map(c => [c.slug, c]));
+// Weitere Ligen nur im Reiter "Wettbewerbe" (nicht in "Spiele" und "Tabellen")
+const EXTRA = [
+  { slug: "esp.1", name: "La Liga", table: true },
+  { slug: "ita.1", name: "Serie A", table: true },
+  { slug: "fra.1", name: "Ligue 1", table: true },
+  { slug: "ned.1", name: "Eredivisie", table: true },
+  { slug: "por.1", name: "Liga Portugal", table: true }
+];
+const COMP_BY = Object.fromEntries([...COMPS, ...EXTRA].map(c => [c.slug, c]));
 // Offizielle YouTube-Kanaele (geprueft am 06.11.2026)
 const CH = {
   daznUcl:   { id: "UCB-GdMjyokO9lZkKU_oIK6g", label: "DAZN" },
@@ -272,6 +285,9 @@ const state = {
   tableComp: store.get("sr_table", "ger.1"),
   tablesRevealed: false,
   tableSub: store.get("sr_tablesub", "table"),
+  compSel: store.get("sr_comp", null),
+  compSub: store.get("sr_compsub", "games"),
+  compRound: null, compRoundFor: null,
   hasLive: false
 };
 
@@ -289,6 +305,7 @@ $("#spoilerBtn").addEventListener("click", () => {
 
 /* ================= Navigation ================= */
 document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => {
+  if (b.dataset.view === "comps" && state.view === "comps") { state.compSel = null; store.set("sr_comp", null); }
   state.view = b.dataset.view; store.set("sr_view", state.view); render(true);
 }));
 function paintNav() { document.querySelectorAll("nav button").forEach(b => b.classList.toggle("active", b.dataset.view === state.view)); }
@@ -355,6 +372,13 @@ document.addEventListener("click", e => {
   if (ts) { state.tableSub = ts.dataset.tablesub; store.set("sr_tablesub", state.tableSub); render(); }
   const tc = e.target.closest("[data-tablecomp]");
   if (tc) { state.tableComp = tc.dataset.tablecomp; store.set("sr_table", state.tableComp); render(); }
+  const cp = e.target.closest("[data-comp]");
+  if (cp) { state.compSel = cp.dataset.comp; store.set("sr_comp", state.compSel); state.compSub = "games"; store.set("sr_compsub", "games"); state.compRound = null; render(true); window.scrollTo(0, 0); return; }
+  if (e.target.closest("[data-compback]")) { state.compSel = null; store.set("sr_comp", null); render(true); return; }
+  const cs = e.target.closest("[data-compsub]");
+  if (cs) { state.compSub = cs.dataset.compsub; store.set("sr_compsub", state.compSub); render(true); return; }
+  const rd = e.target.closest("[data-round]");
+  if (rd && !rd.disabled) { state.compRound += +rd.dataset.round; render(true); return; }
   const dn = e.target.closest("[data-day]");
   if (dn) { e.preventDefault(); const n = +dn.dataset.day; state.day = n === 0 ? new Date() : addDays(state.day, n); render(true); }
 });
@@ -569,11 +593,15 @@ async function viewTables() {
   let html = `<div class="seg">${tabs.map(c => `<button data-tablecomp="${c.slug}" class="${c.slug === state.tableComp ? "active" : ""}">${esc(c.name)}</button>`).join("")}</div>`;
   const sub = state.tableSub || "table";
   html += `<div class="seg small">${[["table","Tabelle"],["goals","Torschützen"],["assists","Vorlagen"]].map(([k,l]) => `<button data-tablesub="${k}" class="${k === sub ? "active" : ""}">${l}</button>`).join("")}</div>`;
+  return html + await statsHTML(state.tableComp, sub);
+}
+async function statsHTML(slug, sub) {
+  let html = "";
   if (state.spoiler && !state.tablesRevealed) {
-    return html + `<div class="empty">Tabelle und Statistiken verraten Ergebnisse.<br><br><button class="reveal" data-showtable="1">Trotzdem anzeigen</button></div>`;
+    return `<div class="empty">Tabelle und Statistiken verraten Ergebnisse.<br><br><button class="reveal" data-showtable="1">Trotzdem anzeigen</button></div>`;
   }
   if (sub !== "table") {
-    const s = await getJSON(`${ESPN}${state.tableComp}/statistics`, 15 * 60000);
+    const s = await getJSON(`${ESPN}${slug}/statistics`, 15 * 60000);
     const cat = (s.stats || []).find(c => c.name === (sub === "goals" ? "goalsLeaders" : "assistsLeaders"));
     const list = (cat?.leaders || []).slice(0, 20);
     if (!list.length) return html + `<div class="empty">Noch keine Daten.</div>`;
@@ -585,7 +613,7 @@ async function viewTables() {
       return `<div class="lead${MY_IDS.has(team.id) ? " fav" : ""}"><span class="r">${rank}</span>${team.id || team.logos?.[0]?.href ? `<img loading="lazy" src="${esc(team.logos?.[0]?.href || `https://a.espncdn.com/i/teamlogos/soccer/500/${team.id}.png`)}" alt="" onerror="this.style.visibility='hidden'">` : "<span></span>"}<span>${esc(l.athlete?.displayName || "")}<small>${esc(team.displayName ? deName(team) : "")}</small></span><span class="sp">${games ? esc(games) + " Sp." : ""}</span><span class="v">${esc(Math.round(l.value))}</span></div>`;
     }).join("")}</section><p class="note">${sub === "goals" ? "Tore" : "Torvorlagen"} in diesem Wettbewerb, Saison 2026/27. Quelle: ESPN.</p>`;
   }
-  const j = await getJSON(`${ESPN2}${state.tableComp}/standings`, 10 * 60000);
+  const j = await getJSON(`${ESPN2}${slug}/standings`, 10 * 60000);
   const groups = (j.children?.length ? j.children : [j]).slice().sort((x, y) => {
     const f = g => (g.standings?.entries || []).some(e => MY_IDS.has(e.team.id)) ? 0 : 1;
     return f(x) - f(y);
@@ -602,11 +630,72 @@ async function viewTables() {
         <td>${esc(stat(e, "gamesPlayed"))}</td><td>${esc(stat(e, "wins"))}</td><td>${esc(stat(e, "ties"))}</td><td>${esc(stat(e, "losses"))}</td><td>${esc(stat(e, "pointsFor"))}:${esc(stat(e, "pointsAgainst"))}</td><td>${esc(stat(e, "pointDifferential"))}</td><td><b>${esc(stat(e, "points"))}</b></td></tr>`).join("")}
       </tbody></table></section>`;
   }
+  return html || `<div class="empty">Keine Tabelle verfügbar.</div>`;
+}
+
+/* ================= Ansicht: Wettbewerbe ================= */
+async function viewComps() {
+  if (state.compSel && COMP_BY[state.compSel]) return compPage(state.compSel);
+  const cur = await Promise.all(COMPS.map(c => c.intl && c.table ? isCurrent(c.slug) : false));
+  const groups = [
+    ["Europapokal", COMPS.filter(c => c.slug.startsWith("uefa.") && !c.intl)],
+    ["Länderturniere", COMPS.filter((c, i) => cur[i])],
+    ["Ligen", [COMP_BY["ger.1"], COMP_BY["eng.1"], ...EXTRA]]
+  ];
+  return groups.filter(g => g[1].length).map(([t, l]) => `<section class="comp"><h2><span>${t}</span><span></span></h2>${l.map(c => `<button class="crow" data-comp="${c.slug}"><span>${esc(c.name)}</span><span class="chev">›</span></button>`).join("")}</section>`).join("");
+}
+// Spiele der letzten und naechsten zwei Monate laden und nach Spieltagen (zusammenhaengende Tage) gruppieren
+async function compRounds(slug) {
+  const now = new Date();
+  const months = [-2, -1, 0, 1, 2].map(n => { const d = new Date(now.getFullYear(), now.getMonth() + n, 1); return d.getFullYear() + String(d.getMonth() + 1).padStart(2, "0"); });
+  const res = await Promise.allSettled(months.map((m, i) => getJSON(`${ESPN}${slug}/scoreboard?dates=${m}&limit=500`, i === 2 ? 45000 : 30 * 60000)));
+  if (res[2].status !== "fulfilled") throw res[2].reason;
+  const evs = new Map();
+  res.forEach(r => { if (r.status === "fulfilled") (r.value.events || []).forEach(e => evs.set(e.id, e)); });
+  const list = [...evs.values()].sort((a, b) => new Date(a.date) - new Date(b.date));
+  const rounds = []; let last = null;
+  for (const e of list) {
+    const d = ymd(new Date(e.date)), n = Date.UTC(+d.slice(0, 4), +d.slice(4, 6) - 1, +d.slice(6, 8)) / 86400000;
+    if (!rounds.length || n - last > 1) rounds.push([]);
+    rounds[rounds.length - 1].push(e); last = n;
+  }
+  return rounds;
+}
+function defaultRound(rounds) {
+  const today = ymd(new Date()), day = e => ymd(new Date(e.date));
+  const i = rounds.findIndex(r => day(r[0]) <= today && day(r[r.length - 1]) >= today);
+  if (i >= 0) return i;
+  let lastPast = -1;
+  rounds.forEach((r, k) => { if (day(r[r.length - 1]) < today) lastPast = k; });
+  if (lastPast >= 0 && day(rounds[lastPast][rounds[lastPast].length - 1]) >= ymd(addDays(new Date(), -2))) return lastPast;
+  if (lastPast + 1 < rounds.length) return lastPast + 1;
+  return Math.max(0, lastPast);
+}
+async function compPage(slug) {
+  const c = COMP_BY[slug], sub = state.compSub || "games";
+  let html = `<div class="ctop"><button class="back" data-compback="1">‹ Wettbewerbe</button><b>${esc(c.name)}</b></div>`;
+  html += `<div class="seg small">${[["games","Spiele"],["table","Tabelle"],["goals","Torschützen"],["assists","Vorlagen"]].map(([k, l]) => `<button data-compsub="${k}" class="${k === sub ? "active" : ""}">${l}</button>`).join("")}</div>`;
+  if (sub !== "games") return html + await statsHTML(slug, sub);
+  const rounds = await compRounds(slug);
+  if (!rounds.length) return html + `<div class="empty">Keine Spiele in den letzten und nächsten zwei Monaten.</div>`;
+  if (state.compRound == null || state.compRoundFor !== slug) { state.compRound = defaultRound(rounds); state.compRoundFor = slug; }
+  state.compRound = Math.min(Math.max(state.compRound, 0), rounds.length - 1);
+  const r = rounds[state.compRound];
+  const f = e => berlin(e.date, { weekday: "short", day: "2-digit", month: "2-digit" });
+  const a = f(r[0]), b = f(r[r.length - 1]);
+  html += `<div class="daybar"><button data-round="-1" aria-label="Vorige Runde"${state.compRound === 0 ? " disabled" : ""}>‹</button>
+    <div class="label"><b>${esc(a === b ? a : a + " bis " + b)}</b><small>${r.length} Spiel${r.length === 1 ? "" : "e"}</small></div>
+    <button data-round="1" aria-label="Nächste Runde"${state.compRound === rounds.length - 1 ? " disabled" : ""}>›</button></div>`;
+  const byDay = new Map();
+  r.forEach(e => { evIndex.set(e.id, e); if (statusInfo(e).live) state.hasLive = true; const k = ymd(new Date(e.date)); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push(e); });
+  for (const evs of byDay.values()) {
+    html += `<section class="comp"><h2><span>${esc(berlin(evs[0].date, { weekday: "long", day: "2-digit", month: "2-digit" }))}</span><span>${evs.length}</span></h2>${evs.map(e => matchHTML(e, slug)).join("")}</section>`;
+  }
   return html;
 }
 
 /* ================= Spieldetails ================= */
-const detail = { id: null, slug: null, tab: "events", timer: null, data: null };
+const detail = { id: null, slug: null, tab: "stats", timer: null, data: null };
 const STAT_ROWS = [
   ["possessionPct", "Ballbesitz", "%"], ["totalShots", "Schüsse"], ["shotsOnTarget", "Schüsse aufs Tor"],
   ["wonCorners", "Ecken"], ["saves", "Paraden"], ["foulsCommitted", "Fouls"], ["yellowCards", "Gelbe Karten"],
@@ -782,12 +871,12 @@ async function renderDetail(force) {
 }
 function openDetail(id, slug) {
   if (!id || !slug || slug === "undefined") return;
-  detail.id = id; detail.slug = slug; detail.tab = "events";
+  detail.id = id; detail.slug = slug; detail.tab = "stats";
   const box = $("#detail");
   const c = COMP_BY[slug];
   box.innerHTML = `<div class="dhead"><div class="dtop"><button class="back" data-close="1">‹ Zurück</button><span class="dcomp">${esc(c ? c.name : "")}</span></div>
     <div class="board"></div>
-    <div class="dtabs"><button data-dtab="events">Ereignisse</button><button data-dtab="stats">Statistik</button><button data-dtab="lineups">Aufstellung</button><button data-dtab="ticker">Ticker</button></div></div>
+    <div class="dtabs"><button data-dtab="stats">Statistik</button><button data-dtab="lineups">Aufstellung</button><button data-dtab="events">Ereignisse</button><button data-dtab="ticker">Ticker</button></div></div>
     <div class="dbody"><div class="load">Lade Spieldaten …</div></div>`;
   box.classList.add("open"); document.body.classList.add("noscroll"); box.scrollTop = 0;
   try { history.pushState({ detail: id }, ""); } catch {}
@@ -820,7 +909,7 @@ async function render(showLoading) {
   state.hasLive = false;
   let html;
   try {
-    html = state.view === "games" ? await viewGames() : state.view === "tables" ? await viewTables() : await viewTeams();
+    html = state.view === "games" ? await viewGames() : state.view === "tables" ? await viewTables() : state.view === "comps" ? await viewComps() : await viewTeams();
     lastUpdate = new Date();
   } catch (e) {
     html = `<div class="err">Daten konnten nicht geladen werden (${esc(e.message)}). Ich versuche es gleich erneut.</div>`;
