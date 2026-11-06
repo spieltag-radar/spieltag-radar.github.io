@@ -147,7 +147,7 @@ body.noscroll{overflow:hidden}
 <body>
 <header>
   <div class="top">
-    <h1>Spieltag-<span>Radar</span></h1>
+    <h1 id="home" role="button" style="cursor:pointer">Spieltag-<span>Radar</span></h1>
     <button id="spoilerBtn" class="spoiler" aria-pressed="false"><span class="dot"></span><span id="spoilerTxt">Spoiler-Schutz aus</span></button>
   </div>
   <nav>
@@ -229,7 +229,8 @@ const CH = {
   rtl:       { id: "UC8WYi3XQXsf-6FNvqoEvxag", label: "RTL" },
   daznFb:    { id: "UClBFnQJMlinWDCvfSXj60CA", label: "DAZN" },
   bvb:       { id: "UCK8rTVgp3-MebXkmeJcQb1Q", label: "BVB" },
-  lfc:       { id: "UC9LQwHZoucFT94I2h6JOcjw", label: "LFC" }
+  lfc:       { id: "UC9LQwHZoucFT94I2h6JOcjw", label: "LFC" },
+  mlsz:      { id: "UCwEejTLJklgxrlWce44tL9w", label: "MLSZ", pages: 8 } // ungarischer Verband, ca. 150 Videos pro Woche, daher 8 Seiten (rund 2 Wochen)
 };
 const VIDEO_CHANNELS = {
   "ger.1": ["skyBl", "sportschau", "zdf"],
@@ -245,7 +246,8 @@ const VIDEO_CHANNELS = {
   "uefa.euro": ["sportschau", "zdf"],
   "fifa.worldq.uefa": ["sportschau", "zdf", "rtl"],
   "fifa.world": ["sportschau", "zdf"],
-  "fifa.friendly": ["sportschau", "zdf", "rtl"]
+  "fifa.friendly": ["sportschau", "zdf", "rtl"],
+  "hun.1": ["mlsz"]
 };
 const CLUB_CHANNEL = { "124": "bvb", "364": "lfc" };
 
@@ -313,10 +315,16 @@ $("#spoilerBtn").addEventListener("click", () => {
 });
 
 /* ================= Navigation ================= */
-document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => {
-  if (b.dataset.view === "comps" && state.view === "comps") { state.compSel = null; store.set("sr_comp", null); }
-  state.view = b.dataset.view; store.set("sr_view", state.view); render(true);
-}));
+// Menue oben: fuehrt immer direkt zur Uebersicht der jeweiligen Ansicht (offene Spiel- oder Teamseiten schliessen, Wettbewerbsliste, heutiger Tag)
+function goView(v) {
+  if ($("#detail").classList.contains("open")) closeDetail(false);
+  if ($("#teamview").classList.contains("open")) closeTeam(false);
+  if (v === "comps") { state.compSel = null; store.set("sr_comp", null); state.compRound = null; }
+  if (v === "games") state.day = new Date();
+  state.view = v; store.set("sr_view", v); render(true); window.scrollTo(0, 0);
+}
+document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => goView(b.dataset.view)));
+$("#home").addEventListener("click", () => goView("teams"));
 function paintNav() { document.querySelectorAll("nav button").forEach(b => b.classList.toggle("active", b.dataset.view === state.view)); }
 
 /* ================= Spiel-Darstellung ================= */
@@ -354,7 +362,7 @@ function matchHTML(ev, slug, opts = {}) {
       : `<div class="score"><span>${esc(scoreOf(home))}</span><span>${esc(scoreOf(away))}</span></div>`;
   }
   const winH = !hide && st.state === "post" && home.winner, winA = !hide && st.state === "post" && away.winner;
-  const logo = t => { const u = t.logo || t.logos?.[0]?.href || (t.id ? `https://a.espncdn.com/i/teamlogos/soccer/500/${t.id}.png` : ""); const img = u ? `<img loading="lazy" src="${esc(u)}" alt="" onerror="this.style.visibility='hidden'">` : `<span style="width:20px"></span>`; return t.id && !String(t.id).startsWith("tsdb") ? `<span class="tlogo" data-team="${esc(t.id)}" aria-label="Teamseite">${img}</span>` : img; };
+  const logo = t => { const u = t.logo || t.logos?.[0]?.href || (t.id ? `https://a.espncdn.com/i/teamlogos/soccer/500/${t.id}.png` : ""); const img = u ? `<img loading="lazy" src="${esc(u)}" alt="" onerror="this.style.visibility='hidden'">` : `<span style="width:20px"></span>`; return t.id ? `<span class="tlogo" data-team="${esc(t.id)}" aria-label="Teamseite">${img}</span>` : img; };
   const dateLine = opts.withDate ? `<div class="sub">${esc(berlin(ev.date, { weekday:"short", day:"2-digit", month:"2-digit" }))} · ${esc((COMP_BY[slug]||{}).name || ev.league?.name || "")}</div>` : "";
   return `<div class="match${fav ? " fav" : ""}${opts.noDetail ? " nodetail" : ""}" data-ev="${esc(ev.id)}" data-slug="${esc(slug)}">
     <div class="row">
@@ -396,7 +404,7 @@ document.addEventListener("click", e => {
 });
 
 /* ================= YouTube-Zusammenfassungen ================= */
-const STOP = new Set(["fc","sc","sv","vfb","vfl","tsg","afc","cf","ac","as","ss","ssc","rc","cd","ud","sd","rb","fk","sk","nk","bk","if","club","united","city","real","athletic","borussia","sporting","olympique","manchester","madrid","milan","mailand","inter","saint","st","de","la","the","and","hove","albion","calcio","football","kv","krc","rcd","1899","1846","1904","04","05","96"]);
+const STOP = new Set(["fc","sc","sv","vfb","vfl","tsg","afc","cf","ac","as","ss","ssc","rc","cd","ud","sd","rb","fk","sk","nk","bk","if","club","united","city","real","athletic","borussia","sporting","olympique","manchester","madrid","milan","mailand","inter","saint","st","de","la","the","and","hove","albion","calcio","football","kv","krc","rcd","1899","1846","1904","04","05","96","budapest","akademia","spartacus","master","good"]);
 const TRANSLATE = { munich:"munchen", cologne:"koln", prague:"prag", athens:"athen", belgrade:"belgrad", vienna:"wien", copenhagen:"kopenhagen", lisbon:"lissabon", napoli:"neapel", naples:"neapel", rome:"rom", roma:"rom", seville:"sevilla", warsaw:"warschau", kyiv:"kiew", bucharest:"bukarest", florence:"florenz", genoa:"genua", venice:"venedig", geneva:"genf", lucerne:"luzern", nice:"nizza", brugge:"brugge", turin:"turin", piraeus:"piraus", fenerbahce:"fenerbahce", qarabag:"qarabag" };
 const ALIAS = {
   "Manchester United":["manchester united","man united","man utd"], "Manchester City":["manchester city","man city"],
@@ -408,7 +416,9 @@ const ALIAS = {
   "Olympiacos":["olympiakos","olympiacos"], "Bodo/Glimt":["bodo"], "PSV Eindhoven":["psv","eindhoven"], "Red Bull Salzburg":["salzburg"], "RB Leipzig":["leipzig"],
   "Bayer Leverkusen":["leverkusen"], "Eintracht Frankfurt":["frankfurt","eintracht"], "Werder Bremen":["bremen","werder"], "Union Berlin":["union"],
   "St. Pauli":["pauli"], "Brighton & Hove Albion":["brighton"], "West Ham United":["west ham"], "Crystal Palace":["crystal palace","palace"],
-  "Newcastle United":["newcastle"], "Leeds United":["leeds"], "Aston Villa":["aston villa"], "Nottingham Forest":["nottingham","forest"]
+  "Newcastle United":["newcastle"],
+  "Zalaegerszeg":["zte","zalaegerszeg"], "Győri ETO":["eto"], "Debrecen":["dvsc","debrecen"], "Budapest Honvéd":["honved","kispest"], "Kisvárda":["kisvarda"],
+  "Paks":["paksi","paks"], "Ferencváros":["ferencvarosi","ferencvaros","ftc"], "Puskás Akadémia":["puskas"], "MTK Budapest":["mtk"], "Vasas":["vasas"], "Újpest":["ujpest"], "Nyíregyháza":["nyiregyhaza"], "Leeds United":["leeds"], "Aston Villa":["aston villa"], "Nottingham Forest":["nottingham","forest"]
 };
 const norm = s => String(s || "").toLowerCase().replace(/ß/g, "ss").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/ø/g, "o").replace(/[^a-z0-9]+/g, " ").trim();
 function teamKeys(t) {
@@ -422,8 +432,8 @@ function teamKeys(t) {
   return [...keys].map(norm).filter(Boolean);
 }
 const hasKey = (title, keys) => keys.some(k => new RegExp("(^| )" + k.replace(/ /g, " ") + "( |$)").test(title));
-const NEG = /\b(u17|u19|u21|u23|youth|frauen|women|damen|stimmen|pressekonferenz|interview|vorschau|preview|reaktion|analyse|podcast|vodcast|live ?stream|re ?live|fan ?cam|tunnel cam|training|best of)\b/;
-const POS = /(highlight|zusammenfassung|tore|spieltag|runde|matchday|\d+ ?[:\-] ?\d+)/;
+const NEG = /\b(u17|u19|u21|u23|youth|frauen|women|damen|stimmen|pressekonferenz|interview|vorschau|preview|reaktion|analyse|podcast|vodcast|live ?stream|re ?live|fan ?cam|tunnel cam|training|best of|noi|futsal|nb ii|kupa|golja|goljai|vedese|vedesei|ertekelese|beharangozoja|fanzone)\b/;
+const POS = /(highlight|zusammenfassung|tore|spieltag|runde|matchday|fordulo|osszefoglalo|\d+ ?[:\-] ?\d+)/;
 
 const ytMem = new Map();
 async function channelUploads(key) {
@@ -433,11 +443,15 @@ async function channelUploads(key) {
   if (cached && Date.now() - cached.t < 15 * 60 * 1000) return cached.items;
   if (ytMem.has(key)) return ytMem.get(key);
   const p = (async () => {
-    const url = "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=UU" + ch.id.slice(2) + "&key=" + YT_KEY;
-    const r = await fetch(url);
-    if (!r.ok) throw new Error("YouTube " + r.status);
-    const j = await r.json();
-    const items = (j.items || []).map(i => ({ id: i.snippet.resourceId.videoId, title: i.snippet.title, at: i.snippet.publishedAt }));
+    const items = []; let tok = "";
+    for (let pg = 0; pg < (ch.pages || 1); pg++) {
+      const url = "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=UU" + ch.id.slice(2) + "&key=" + YT_KEY + (tok ? "&pageToken=" + tok : "");
+      const r = await fetch(url);
+      if (!r.ok) { if (items.length) break; throw new Error("YouTube " + r.status); }
+      const j = await r.json();
+      items.push(...(j.items || []).map(i => ({ id: i.snippet.resourceId.videoId, title: i.snippet.title, at: i.snippet.publishedAt })));
+      tok = j.nextPageToken; if (!tok) break;
+    }
     store.set(ck, { t: Date.now(), items });
     return items;
   })();
@@ -734,27 +748,33 @@ function tsdbEv(e) {
     { homeAway: "away", team: team(e.ai, e.a, e.ab), score: done ? String(e.as) : null, winner: done && A > H }
   ] }] };
 }
+async function tsdbContext(c) {
+  const [nx, pv] = await Promise.all([getJSON(`${TSDB}eventsnextleague.php?id=${c.tsdb}`, 30 * 60000).catch(() => ({})), getJSON(`${TSDB}eventspastleague.php?id=${c.tsdb}`, 30 * 60000).catch(() => ({}))]);
+  const next = (nx.events || [])[0], past = (pv.events || [])[0];
+  return { next, past, season: (next || past)?.strSeason, lastRound: past ? +past.intRound : 0 };
+}
+// Mehrere Spieltage laden: nacheinander mit kurzer Pause, der kostenlose Zugang erlaubt nur etwa 30 Abrufe pro Minute
+async function tsdbRounds(c, season, from, to) {
+  const rounds = [];
+  for (let r = Math.max(1, from); r <= Math.min(to, c.rounds); r++) {
+    const cached = store.get(`sr_tsdb_${c.tsdb}_${season}_${r}`, null);
+    rounds.push(cached || await tsdbRound(c, season, r));
+    if (!cached) await new Promise(res => setTimeout(res, 600));
+  }
+  return rounds;
+}
 async function tsdbPage(slug) {
   const c = COMP_BY[slug];
   const sub = state.compSub === "table" ? "table" : "games";
   let html = `<div class="ctop"><button class="back" data-compback="1">‹ Wettbewerbe</button><b>${esc(c.name)}</b></div>`;
   html += `<div class="seg small">${[["games","Spiele"],["table","Tabelle"]].map(([k, l]) => `<button data-compsub="${k}" class="${k === sub ? "active" : ""}">${l}</button>`).join("")}</div>`;
-  const [nx, pv] = await Promise.all([getJSON(`${TSDB}eventsnextleague.php?id=${c.tsdb}`, 30 * 60000).catch(() => ({})), getJSON(`${TSDB}eventspastleague.php?id=${c.tsdb}`, 30 * 60000).catch(() => ({}))]);
-  const next = (nx.events || [])[0], past = (pv.events || [])[0];
-  const season = (next || past)?.strSeason;
+  const { next, past, season, lastRound } = await tsdbContext(c);
   if (!season) return html + `<div class="empty">Daten für die NB I sind gerade nicht erreichbar.</div>`;
-  const lastRound = past ? +past.intRound : 0;
   if (sub === "table") {
     if (state.spoiler && !state.tablesRevealed) return html + `<div class="empty">Die Tabelle verrät Ergebnisse.<br><br><button class="reveal" data-showtable="1">Trotzdem anzeigen</button></div>`;
-    const rounds = [];
-    // Nacheinander mit kurzer Pause abrufen: der kostenlose Zugang erlaubt nur etwa 30 Abrufe pro Minute
-    for (let r = 1; r <= lastRound + 1 && r <= c.rounds; r++) {
-      const cached = store.get(`sr_tsdb_${c.tsdb}_${season}_${r}`, null);
-      rounds.push(cached || await tsdbRound(c, season, r));
-      if (!cached) await new Promise(res => setTimeout(res, 600));
-    }
+    const rounds = await tsdbRounds(c, season, 1, lastRound + 1);
     const tab = new Map();
-    const row = (id, n, b) => { if (!tab.has(id)) tab.set(id, { n, b, sp: 0, s: 0, u: 0, nl: 0, gf: 0, ga: 0 }); return tab.get(id); };
+    const row = (id, n, b) => { if (!tab.has(id)) tab.set(id, { id, n, b, sp: 0, s: 0, u: 0, nl: 0, gf: 0, ga: 0 }); return tab.get(id); };
     rounds.flat().forEach(e => {
       const h = row(e.hi, e.h, e.hb), a = row(e.ai, e.a, e.ab);
       if (e.hs == null || e.as == null) return;
@@ -764,7 +784,7 @@ async function tsdbPage(slug) {
     });
     const list = [...tab.values()].map(t => ({ ...t, p: t.s * 3 + t.u, d: t.gf - t.ga })).sort((x, y) => y.p - x.p || y.d - x.d || y.gf - x.gf || x.n.localeCompare(y.n));
     return html + `<section class="comp"><table class="tbl"><thead><tr><th class="r">#</th><th class="t">Team</th><th>Sp</th><th>S</th><th>U</th><th>N</th><th>Tore</th><th>Diff</th><th>Pkt</th></tr></thead><tbody>
-      ${list.map((t, i) => `<tr><td class="r">${i + 1}</td><td class="t">${t.b ? `<img loading="lazy" src="${esc(t.b)}/tiny" alt="">` : ""}<span>${esc(t.n)}</span></td><td>${t.sp}</td><td>${t.s}</td><td>${t.u}</td><td>${t.nl}</td><td>${t.gf}:${t.ga}</td><td>${t.d > 0 ? "+" + t.d : t.d}</td><td><b>${t.p}</b></td></tr>`).join("")}
+      ${list.map((t, i) => `<tr data-team="tsdb${esc(t.id)}"><td class="r">${i + 1}</td><td class="t">${t.b ? `<img loading="lazy" src="${esc(t.b)}/tiny" alt="">` : ""}<span>${esc(t.n)}</span></td><td>${t.sp}</td><td>${t.s}</td><td>${t.u}</td><td>${t.nl}</td><td>${t.gf}:${t.ga}</td><td>${t.d > 0 ? "+" + t.d : t.d}</td><td><b>${t.p}</b></td></tr>`).join("")}
       </tbody></table></section><p class="note">Selbst berechnet aus allen Ergebnissen (3 Punkte pro Sieg, bei Gleichstand Tordifferenz, dann Tore). Die offizielle Tabelle kann bei Punktgleichheit anders sortiert sein. Quelle: TheSportsDB.</p>`;
   }
   if (state.compRound == null || state.compRoundFor !== slug) {
@@ -780,7 +800,7 @@ async function tsdbPage(slug) {
   const byDay = new Map();
   evs.forEach(e => { evIndex.set(e.id, e); const k = ymd(new Date(e.date)); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push(e); });
   for (const list of byDay.values()) html += `<section class="comp"><h2><span>${esc(berlin(list[0].date, { weekday: "long", day: "2-digit", month: "2-digit" }))}</span><span>${list.length}</span></h2>${list.map(e => matchHTML(e, slug, { noDetail: true })).join("")}</section>`;
-  return html + `<p class="note">Quelle: TheSportsDB. Ergebnisse erscheinen erst nach Spielende, Spieldetails gibt es für diese Liga nicht.</p>`;
+  return html + `<p class="note">Quelle: TheSportsDB. Ergebnisse erscheinen erst nach Spielende, Spieldetails gibt es für diese Liga nicht. Videos vom ungarischen Verband (MLSZ).</p>`;
 }
 
 /* ================= Spieldetails ================= */
@@ -992,7 +1012,7 @@ window.addEventListener("popstate", () => {
 let zTop = 20;
 const team = { id: null };
 function openTeam(id) {
-  if (!id || String(id).startsWith("tsdb")) return;
+  if (!id) return;
   team.id = id;
   const box = $("#teamview");
   box.innerHTML = `<div class="dhead"><div class="dtop"><button class="back" data-closeteam="1">‹ Zurück</button><span class="dcomp">Team</span></div><div class="thead"></div></div><div class="dbody"><div class="load">Lade Spiele …</div></div>`;
@@ -1003,6 +1023,7 @@ function openTeam(id) {
 async function renderTeam() {
   const box = $("#teamview"), id = team.id;
   if (!id || !box.classList.contains("open")) return;
+  if (String(id).startsWith("tsdb")) return renderTsdbTeam(box, id);
   const [res, fix] = await Promise.allSettled([
     getJSON(`${ESPN}all/teams/${id}/schedule`, 5 * 60000),
     getJSON(`${ESPN}all/teams/${id}/schedule?fixture=true`, 30 * 60000)
@@ -1020,6 +1041,28 @@ async function renderTeam() {
     `<section class="comp"><h2><span>Letzte Spiele</span><span></span></h2>${past.map(e => matchHTML(e, e.league?.slug, { withDate: true })).join("") || `<div class="empty">Keine Spiele gefunden.</div>`}</section>` +
     `<section class="comp"><h2><span>Nächste Spiele</span><span></span></h2>${next.map(e => matchHTML(e, e.league?.slug, { withDate: true })).join("") || `<div class="empty">Keine Termine.</div>`}</section>`;
   box.scrollTop = y;
+  fillVideos(box);
+}
+// Teamseite fuer NB-I-Vereine aus den Spieltagsdaten von TheSportsDB
+async function renderTsdbTeam(box, id) {
+  const c = COMP_BY["hun.1"], tid = String(id).slice(4);
+  const { season, lastRound } = await tsdbContext(c);
+  if (!season) { box.querySelector(".dbody").innerHTML = `<div class="err">Daten für die NB I sind gerade nicht erreichbar.</div>`; return; }
+  const all = (await tsdbRounds(c, season, 1, lastRound + 4)).flat().filter(e => e.hi === tid || e.ai === tid);
+  if (team.id !== id) return;
+  const any = all[0];
+  if (any) {
+    const home = any.hi === tid, b = home ? any.hb : any.ab;
+    box.querySelector(".thead").innerHTML = `${b ? `<img src="${esc(b)}/tiny" alt="">` : ""}<b>${esc(home ? any.h : any.a)}</b>`;
+  }
+  const evs = all.map(tsdbEv);
+  const past = evs.filter(e => statusInfo(e).state === "post").sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+  const next = evs.filter(e => statusInfo(e).state !== "post").sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 3);
+  [...past, ...next].forEach(e => evIndex.set(e.id, e));
+  box.querySelector(".dbody").innerHTML =
+    `<section class="comp"><h2><span>Letzte Spiele</span><span></span></h2>${past.map(e => matchHTML(e, "hun.1", { withDate: true, noDetail: true })).join("") || `<div class="empty">Keine Spiele gefunden.</div>`}</section>` +
+    `<section class="comp"><h2><span>Nächste Spiele</span><span></span></h2>${next.map(e => matchHTML(e, "hun.1", { withDate: true, noDetail: true })).join("") || `<div class="empty">Keine Termine.</div>`}</section>` +
+    `<p class="note">Nur Spiele der NB I. Quelle: TheSportsDB, Videos vom ungarischen Verband (MLSZ).</p>`;
   fillVideos(box);
 }
 function closeTeam(fromHistory) {
