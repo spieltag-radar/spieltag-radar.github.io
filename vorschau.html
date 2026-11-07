@@ -223,6 +223,17 @@ th,td,.lead,.stat,.pl,.tick,.ev,.crow{border-color:var(--line)}
 .tile.today .big .tn{font-size:16px;margin-top:6px}
 .tile.today .sc2{font-size:34px;font-weight:300;font-variant-numeric:tabular-nums}
 .tile.today .meta{font-size:13px;opacity:.9;margin-bottom:8px}
+.tile.today .big{align-items:start}
+.tile.today .sc2{align-self:center}
+.tile.today .sc{margin-top:6px;font-size:14px;line-height:1.35;opacity:.75}
+.tile.today .sc span{font-variant-numeric:tabular-nums}
+/* Statistik besser lesbar: groessere, hellere Beschriftung, kraeftigere Balken */
+.stat{padding:14px 12px}
+.stat .lbl{font-size:22px;align-items:baseline}
+.stat .lbl b{font-weight:600}
+.stat .lbl span:nth-child(2){color:#d6d6d6;font-size:18px}
+.bars{margin-top:8px;height:8px}
+.bars i{height:8px}
 .tile.today .vids{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 2px}
 .tile.today .vid{background:rgba(0,0,0,.28);color:#fff}
 .rb{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;font-size:16px;font-weight:700;color:#fff;border:1.5px solid rgba(255,255,255,.9)}
@@ -829,8 +840,21 @@ async function viewTeams() {
       const c = e.competitions[0].competitors, h = c.find(x => x.homeAway === "home") || c[0], a = c.find(x => x.homeAway === "away") || c[1];
       const st = statusInfo(e), hide = st.state !== "pre" && state.spoiler && !state.revealed.has(e.id);
       const mid = st.state === "pre" ? esc(hm(e.date)) : hide ? `<button class="reveal" data-reveal="${esc(e.id)}">Ergebnis</button>` : `${esc(scoreOf(h))} : ${esc(scoreOf(a))}`;
+      // Torschuetzen aus dem Scoreboard (kurze Namen, Eigentore beim beguenstigten Team)
+      const scorers = tid => {
+        if (st.state === "pre" || hide) return "";
+        const by = new Map();
+        for (const k of e.competitions[0].details || []) {
+          if (!k.scoringPlay || String(k.team?.id) !== String(tid)) continue;
+          const a = k.athletesInvolved?.[0], n = a?.shortName || a?.displayName || "Tor";
+          const tag = k.ownGoal ? " (ET)" : k.penaltyKick ? " (Elfm.)" : "";
+          if (!by.has(n)) by.set(n, []);
+          by.get(n).push((k.clock?.displayValue || "") + tag);
+        }
+        return by.size ? `<div class="sc">${[...by].map(([n, m]) => `<div>${esc(n)} <span>${esc(m.join(", "))}</span></div>`).join("")}</div>` : "";
+      };
       html += `<div class="tile today match" data-ev="${esc(e.id)}" data-slug="${esc(slug)}"><div class="meta">${esc((COMP_BY[slug] || {}).name || "")} · ${esc(st.state === "pre" ? "Anpfiff " + hm(e.date) + " Uhr" : st.label)}</div>
-        <div class="big"><div>${crestOf(h.team)}<div class="tn">${esc(deName(h.team))}</div></div><div class="sc2">${mid}</div><div>${crestOf(a.team)}<div class="tn">${esc(deName(a.team))}</div></div></div>
+        <div class="big"><div>${crestOf(h.team)}<div class="tn">${esc(deName(h.team))}</div>${scorers(h.team.id)}</div><div class="sc2">${mid}</div><div>${crestOf(a.team)}<div class="tn">${esc(deName(a.team))}</div>${scorers(a.team.id)}</div></div>
         ${st.state === "post" ? `<div class="vids" data-vids="${esc(e.id)}" style="margin:8px 0 0"></div>` : ""}</div>`;
     }
     html += `</section>`;
