@@ -150,10 +150,10 @@ body.noscroll{overflow:hidden}
 /* Aufstellung aufgeraeumt: ruhiges Feld, groessere Namen, Wechsel mit Minute als eigene Liste */
 .pitch{height:560px;background:#1d5c34}
 .pline{border-color:rgba(255,255,255,.22)}
-.pp{width:88px}
+.pp{transform:translate(-50%,-18px)}
 .pn{width:36px;height:36px;font-size:17px;border-radius:50%!important}
-.pnm{margin-top:4px;font-size:15px;max-width:92px;text-shadow:0 1px 3px rgba(0,0,0,.9)}
-.pnm.long{font-size:12.5px}
+.pnm{margin-top:4px;font-size:15px;max-width:100%;text-shadow:0 1px 3px rgba(0,0,0,.9)}
+.pnm.long{font-size:12.5px;letter-spacing:-.2px}
 .pic{display:flex;gap:4px;align-items:center;margin-top:3px;font-size:13px}
 .pic .off{background:rgba(0,0,0,.55);color:#fff;font-weight:600;padding:1px 5px;font-variant-numeric:tabular-nums}
 .sw{display:grid;grid-template-columns:48px 1fr;gap:8px;padding:9px 0;border-bottom:1px solid var(--line);font-size:18px}
@@ -1221,13 +1221,15 @@ function pitchHTML(r, subs, hide) {
   const n = rows.length;
   const dots = rows.map((row, ri) => {
     const sorted = row.slice().sort((a, b) => posLat(a.position?.abbreviation) - posLat(b.position?.abbreviation));
-    const y = 91 - ri * (80 / (n - 1));
+    const y = 87 - ri * (78 / (n - 1));
     return sorted.map((p, pi) => {
-      const x = (pi + 1) * 100 / (sorted.length + 1);
+      const k = sorted.length, x = k >= 4 ? (pi + 0.5) * 100 / k : (pi + 1) * 100 / (k + 1);
       const off = hide ? "" : subs.out.get(String(p.athlete?.id || ""));
       const marks = hide ? "" : playerMarks(p);
       const tags = (marks ? `<span>${marks}</span>` : "") + (off ? `<span class="off">↓ ${esc(off)}</span>` : "");
-      return `<div class="pp" style="left:${x}%;top:${y}%"><span class="pn">${esc(p.jersey || "")}</span><span class="pnm${name(p).length > 10 ? " long" : ""}">${esc(name(p))}</span>${tags ? `<span class="pic">${tags}</span>` : ""}</div>`;
+      // Ausrichtung am Nummernkreis (nicht an der ganzen Box), damit eine Reihe immer auf einer Linie steht, egal ob Symbole darunter sind
+      const wpc = k >= 4 ? 100 / k - 1 : 30, nm = name(p), cls = nm.length > 10 || (sorted.length >= 4 && nm.length > 8) ? " long" : "";
+      return `<div class="pp" style="left:${x}%;top:${y}%;width:${wpc}%"><span class="pn">${esc(p.jersey || "")}</span><span class="pnm${cls}">${esc(name(p))}</span>${tags ? `<span class="pic">${tags}</span>` : ""}</div>`;
     }).join("");
   }).join("");
   return `<div class="pitch"><div class="pline mid"></div><div class="pline box top"></div><div class="pline box bot"></div><div class="pline circle"></div>${dots}</div>`;
