@@ -106,8 +106,9 @@ body.noscroll{overflow:hidden}
 .board .st.live{color:var(--live);font-weight:700}
 .board{align-items:start}
 .board .big{margin-top:6px}
-.board .sc{margin-top:6px;font-size:14px;line-height:1.35;color:var(--muted)}
-.board .sc span{color:var(--text);font-variant-numeric:tabular-nums}
+.board .sc{margin-top:8px;font-size:18px;line-height:1.4;color:#dcdcdc}
+.board .sc div+div{margin-top:4px}
+.board .sc span{color:#fff;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
 .dtabs{display:flex;gap:2px}
 .dtabs button{flex:1;background:none;border:none;color:var(--muted);padding:10px 2px;font-size:16px;border-bottom:2px solid transparent}
 .dtabs button.active{color:var(--text);border-bottom-color:var(--accent);font-weight:600}
@@ -225,8 +226,9 @@ th,td,.lead,.stat,.pl,.tick,.ev,.crow{border-color:var(--line)}
 .tile.today .meta{font-size:13px;opacity:.9;margin-bottom:8px}
 .tile.today .big{align-items:start}
 .tile.today .sc2{align-self:center}
-.tile.today .sc{margin-top:6px;font-size:14px;line-height:1.35;opacity:.75}
-.tile.today .sc span{font-variant-numeric:tabular-nums}
+.tile.today .sc{margin-top:6px;font-size:17px;line-height:1.4;color:#dcdcdc}
+.tile.today .sc div+div{margin-top:3px}
+.tile.today .sc span{color:#fff;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
 /* Statistik besser lesbar: groessere, hellere Beschriftung, kraeftigere Balken */
 .stat{padding:14px 12px}
 .stat .lbl{font-size:22px;align-items:baseline}
