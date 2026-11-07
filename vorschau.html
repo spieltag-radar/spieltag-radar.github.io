@@ -147,6 +147,21 @@ body.noscroll{overflow:hidden}
 .pn{width:30px;height:30px;border-radius:50%;background:#f8fafc;color:#0f1115;font-weight:800;font-size:16px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.4)}
 .pnm{margin-top:3px;font-size:13px;font-weight:600;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px}
 .pic{font-size:12px;line-height:1}
+/* Aufstellung aufgeraeumt: ruhiges Feld, groessere Namen, Wechsel mit Minute als eigene Liste */
+.pitch{height:560px;background:#1d5c34}
+.pline{border-color:rgba(255,255,255,.22)}
+.pp{width:88px}
+.pn{width:36px;height:36px;font-size:17px;border-radius:50%!important}
+.pnm{margin-top:4px;font-size:15px;max-width:92px;text-shadow:0 1px 3px rgba(0,0,0,.9)}
+.pnm.long{font-size:12.5px}
+.pic{display:flex;gap:4px;align-items:center;margin-top:3px;font-size:13px}
+.pic .off{background:rgba(0,0,0,.55);color:#fff;font-weight:600;padding:1px 5px;font-variant-numeric:tabular-nums}
+.sw{display:grid;grid-template-columns:48px 1fr;gap:8px;padding:9px 0;border-bottom:1px solid var(--line);font-size:18px}
+.sw .m{color:var(--accent);font-weight:600;font-variant-numeric:tabular-nums}
+.sw b{font-weight:600}
+.sw small{display:block;color:#bdbdbd;font-size:15px;margin-top:2px}
+.bench{display:flex;flex-wrap:wrap;gap:6px 14px;padding:8px 0 4px;font-size:16px;color:#d6d6d6}
+.bench i{font-style:normal;color:var(--muted);margin-right:5px;font-variant-numeric:tabular-nums}
 /* ================= Design "Metro dunkel" (Windows-Phone-Stil, gewaehlt am 06.11.2026) ================= */
 :root{--bg:#000000;--card:#000000;--card2:#1c1c1c;--line:#262626;--text:#ffffff;--muted:#8c8c8c;--accent:#1ba1e2;--live:#1ba1e2}
 html,body{font-family:"Segoe UI","Segoe WP",Inter,-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text)}
@@ -1172,7 +1187,28 @@ function posLat(a) {
   if (/-R$/.test(a)) return 1;
   return 0;
 }
-function pitchHTML(r) {
+// Wechsel eines Teams aus den Spielereignissen: wer kam wann fuer wen (ESPN: erster Beteiligter = eingewechselt, zweiter = ausgewechselt)
+function subsOf(s, teamId) {
+  const out = new Map(), inn = new Map(), list = [];
+  for (const k of s.keyEvents || []) {
+    const t = (k.type?.type || "") + " " + (k.type?.text || "");
+    if (!/substitution/i.test(t) || String(k.team?.id) !== String(teamId)) continue;
+    const [pi, po] = (k.participants || []).map(x => x.athlete || {});
+    const m = k.clock?.displayValue || "";
+    if (po?.id) out.set(String(po.id), m);
+    if (pi?.id) inn.set(String(pi.id), { m, forName: po?.displayName || "" });
+    list.push({ m, inName: pi?.displayName || "", outName: po?.displayName || "", inId: String(pi?.id || "") });
+  }
+  return { out, inn, list };
+}
+function playerMarks(p) {
+  const st = p.stats || [], val = n => +(st.find(x => x.name === n)?.value || 0);
+  let ic = "";
+  const g = val("totalGoals"); if (g) ic += "⚽".repeat(Math.min(g, 3));
+  if (val("redCards")) ic += "🟥"; else if (val("yellowCards")) ic += "🟨";
+  return ic;
+}
+function pitchHTML(r, subs, hide) {
   const st = (r.roster || []).filter(p => p.starter);
   const gk = st.filter(p => p.position?.abbreviation === "G");
   const field = st.filter(p => p.position?.abbreviation !== "G").sort((a, b) => posDepth(a.position?.abbreviation) - posDepth(b.position?.abbreviation) || (a.formationPlace || 99) - (b.formationPlace || 99));
@@ -1182,44 +1218,43 @@ function pitchHTML(r) {
   const rows = [gk]; let i = 0;
   for (const n of counts) { rows.push(field.slice(i, i + n)); i += n; }
   const name = p => { const a = p.athlete || {}; return a.lastName || (a.displayName || "").split(" ").slice(-1)[0] || a.shortName || ""; };
-  const icons = p => {
-    const s = p.stats || [], ic = [];
-    const g = +(s.find(x => x.name === "totalGoals")?.value || 0); if (g) ic.push("⚽".repeat(Math.min(g, 3)));
-    if (+(s.find(x => x.name === "redCards")?.value || 0)) ic.push("🟥"); else if (+(s.find(x => x.name === "yellowCards")?.value || 0)) ic.push("🟨");
-    if (p.subbedOut) ic.push("⬇︎");
-    return ic.join("");
-  };
   const n = rows.length;
   const dots = rows.map((row, ri) => {
     const sorted = row.slice().sort((a, b) => posLat(a.position?.abbreviation) - posLat(b.position?.abbreviation));
-    const y = 92 - ri * (84 / (n - 1));
+    const y = 91 - ri * (80 / (n - 1));
     return sorted.map((p, pi) => {
       const x = (pi + 1) * 100 / (sorted.length + 1);
-      return `<div class="pp" style="left:${x}%;top:${y}%"><span class="pn">${esc(p.jersey || "")}</span><span class="pnm">${esc(name(p))}</span>${icons(p) ? `<span class="pic">${icons(p)}</span>` : ""}</div>`;
+      const off = hide ? "" : subs.out.get(String(p.athlete?.id || ""));
+      const marks = hide ? "" : playerMarks(p);
+      const tags = (marks ? `<span>${marks}</span>` : "") + (off ? `<span class="off">↓ ${esc(off)}</span>` : "");
+      return `<div class="pp" style="left:${x}%;top:${y}%"><span class="pn">${esc(p.jersey || "")}</span><span class="pnm${name(p).length > 10 ? " long" : ""}">${esc(name(p))}</span>${tags ? `<span class="pic">${tags}</span>` : ""}</div>`;
     }).join("");
   }).join("");
   return `<div class="pitch"><div class="pline mid"></div><div class="pline box top"></div><div class="pline box bot"></div><div class="pline circle"></div>${dots}</div>`;
 }
-function lineupHTML(r) {
+function lineupHTML(r, s, hide) {
   if (!r?.roster?.length) return "";
+  const subs = subsOf(s, r.team?.id);
   const starters = r.roster.filter(p => p.starter).sort((a, b) => (a.formationPlace || 99) - (b.formationPlace || 99));
   const bench = r.roster.filter(p => !p.starter);
   const row = p => {
-    const ic = [];
-    if (p.subbedOut) ic.push("⬇︎");
-    if (p.subbedIn) ic.push("⬆︎");
-    const st = p.stats || [];
-    const g = +(st.find(s => s.name === "totalGoals")?.value || 0);
-    if (g) ic.push("⚽".repeat(Math.min(g, 4)));
-    if (+(st.find(s => s.name === "yellowCards")?.value || 0)) ic.push("🟨");
-    if (+(st.find(s => s.name === "redCards")?.value || 0)) ic.push("🟥");
-    const pos = p.position?.abbreviation;
-    return `<div class="pl"><span class="nr">${esc(p.jersey || "")}</span><span>${esc(p.athlete?.displayName || "")} <span class="pos">${esc(POS_DE[pos] ?? pos ?? "")}</span></span><span class="ic">${ic.join(" ")}</span></div>`;
+    const pos = p.position?.abbreviation, marks = hide ? "" : playerMarks(p);
+    return `<div class="pl"><span class="nr">${esc(p.jersey || "")}</span><span>${esc(p.athlete?.displayName || "")} <span class="pos">${esc(POS_DE[pos] ?? pos ?? "")}</span></span><span class="ic">${marks}</span></div>`;
   };
-  const pitch = pitchHTML(r);
+  const pitch = pitchHTML(r, subs, hide);
+  // Wechsel: Minute, wer kam, fuer wen (beim Spoiler-Schutz ausgeblendet, sie verraten den Spielverlauf)
+  const byId = new Map(r.roster.map(p => [String(p.athlete?.id || ""), p]));
+  const changes = hide ? [] : subs.list;
+  const subRows = changes.map(c => {
+    const p = byId.get(c.inId), marks = p ? playerMarks(p) : "";
+    return `<div class="sw"><span class="m">${esc(c.m)}</span><span><b>${esc(p?.jersey ? p.jersey + " " : "")}${esc(c.inName)}</b>${marks ? " " + marks : ""}<small>für ${esc(c.outName)}</small></span></div>`;
+  }).join("");
+  const usedIds = new Set(changes.map(c => c.inId));
+  const unused = bench.filter(p => !usedIds.has(String(p.athlete?.id || "")));
   return `<section class="comp lineup"><h4><span>${esc(deName(r.team))}</span><span>${esc(r.formation || "")}</span></h4>
     ${pitch || starters.map(row).join("")}
-    ${bench.length ? `<h4><span>Bank</span><span></span></h4>${bench.map(row).join("")}` : ""}</section>`;
+    ${subRows ? `<h4><span>Wechsel</span><span></span></h4>${subRows}` : ""}
+    ${unused.length ? `<h4><span>${changes.length ? "Nicht eingesetzt" : "Bank"}</span><span></span></h4><div class="bench">${unused.map(p => `<span><i>${esc(p.jersey || "")}</i>${esc(p.athlete?.displayName || "")}</span>`).join("")}</div>` : ""}</section>`;
 }
 function detailBody(s, ev) {
   const comp = s.header?.competitions?.[0] || ev?.competitions?.[0] || {};
@@ -1255,7 +1290,8 @@ function detailBody(s, ev) {
     const rs = s.rosters || [];
     if (!rs.some(r => r.roster?.length)) return `<div class="empty">Aufstellungen noch nicht veröffentlicht.<br>Meist etwa 1 Stunde vor Anpfiff.</div>`;
     const h = rs.find(r => r.homeAway === "home") || rs[0], a = rs.find(r => r.homeAway === "away") || rs[1];
-    return lineupHTML(h) + lineupHTML(a);
+    const hideEv = st.state !== "pre" && state.spoiler && !state.revealed.has(detail.id);
+    return lineupHTML(h, s, hideEv) + lineupHTML(a, s, hideEv);
   }
   if (detail.tab === "ticker") {
     const c = (s.commentary || []).slice().reverse();
