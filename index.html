@@ -653,8 +653,21 @@ function matchHTML(ev, slug, opts = {}) {
       ${scoreCol}
     </div>
     ${dateLine}
-    ${st.state === "post" ? `<div class="vids" data-vids="${esc(ev.id)}"><span class="novid">Suche Zusammenfassung …</span></div>` : ""}
+    ${st.state === "post" ? `<div class="vids" data-vids="${esc(ev.id)}"><span class="novid">Suche Zusammenfassung …</span></div>` : tvHTML(ev.id)}
   </div>`;
+}
+// Free TV in Deutschland: von Claude recherchiert (Programmankuendigungen der Sender und Fachseiten), Schluessel ist die ESPN Spiel-ID.
+// Aktualisierung auf Zuruf ("TV aktualisieren"). Stand und Quellen stehen im Protokoll.
+const TV_LINKS = { ARD: "https://www.ardmediathek.de", ZDF: "https://www.zdf.de/live-tv/zdf-live-beitrag-100", RTL: "https://plus.rtl.de" };
+const TV_STREAM = { ARD: "ARD Mediathek", ZDF: "ZDF Livestream", RTL: "RTL+" };
+const FREE_TV = {
+  "401861158": "RTL", // Serbien gegen Deutschland, 13.11.2026, Nations League
+  "401861185": "ARD"  // Deutschland gegen Niederlande, 16.11.2026, Nations League
+};
+function tvHTML(id) {
+  const ch = FREE_TV[id];
+  if (!ch) return "";
+  return `<div class="vids"><a class="vid main tv" href="${esc(TV_LINKS[ch] || "#")}" target="_blank" rel="noopener">📺 Free TV: ${esc(ch)} <small>${esc(TV_STREAM[ch] || "")}</small></a></div>`;
 }
 
 document.addEventListener("click", e => {
@@ -1673,7 +1686,7 @@ function seasonLabel(se) {
   return !b || a === b ? a : `${a.slice(2)}/${b.slice(2)}`;
 }
 async function careerData(id) {
-  const k = "sr_car3_" + id, hit = store.get(k, null);
+  const k = "sr_car4_" + id, hit = store.get(k, null);
   if (hit && Date.now() - hit.t < 6 * 3600000) return hit.v;
   const [log, ath] = await Promise.all([getJSON(`${CORE}athletes/${id}/statisticslog`, 6 * 3600000), getJSON(`${CORE}athletes/${id}`, 24 * 3600000).catch(() => ({}))]);
   const rows = await Promise.all((log.entries || []).map(async e => {
@@ -1689,7 +1702,7 @@ async function careerData(id) {
     const g = n => { for (const c of st.splits?.categories || []) { const x = c.stats.find(z => z.name === n); if (x) return +x.value || 0; } return 0; };
     const sp = g("appearances");
     if (!sp) return null;
-    return { kind: careerKind(league, team), season: seasonLabel(season), sort: season.start || "", comp: league.name, slug: league.slug, team: team.full, tshort: team.short, tid: team.id, tlogo: team.logo, sp, t: g("totalGoals"), v: g("goalAssists") };
+    return { kind: careerKind(league, team), season: seasonLabel(season), sort: season.start || "", y1: +(season.start || "").slice(0, 4) || 0, y2: +(season.end || season.start || "").slice(0, 4) || 0, comp: league.name, slug: league.slug, team: team.full, tshort: team.short, tid: team.id, tlogo: team.logo, sp, t: g("totalGoals"), v: g("goalAssists") };
   }));
   const pos = ath.position?.abbreviation;
   const v = {
@@ -1701,7 +1714,7 @@ async function careerData(id) {
   for (const r of rows) {
     if (!r || r.kind === "skip") continue;
     const key = [r.kind, r.season, r.slug, r.tid].join("|"), m = merged.get(key);
-    if (m) { m.sp += r.sp; m.t += r.t; m.v += r.v; if (r.sort > m.sort) m.sort = r.sort; } else merged.set(key, { ...r });
+    if (m) { m.sp += r.sp; m.t += r.t; m.v += r.v; if (r.sort > m.sort) m.sort = r.sort; m.y1 = Math.min(m.y1 || r.y1, r.y1 || m.y1); m.y2 = Math.max(m.y2, r.y2); } else merged.set(key, { ...r });
   }
   v.rows = [...merged.values()].sort((a, b) => b.sort.localeCompare(a.sort) || b.sp - a.sp);
   store.set(k, { t: Date.now(), v });
@@ -1739,9 +1752,45 @@ async function renderPlayer() {
       ${rs.map(r => `<tr><td class="s">${esc(r.season)}</td><td class="c">${r.tlogo ? `<img loading="lazy" src="${esc(r.tlogo)}" alt="" onerror="this.style.display='none'">` : ""}${esc(deName({ id: r.tid, displayName: r.team }))}<small>${esc(compDe(r.slug, r.comp))}</small></td><td class="n">${r.sp}</td><td class="n">${r.t}</td><td class="n">${r.v}</td></tr>`).join("")}
       <tr class="sum"><td class="s">Gesamt</td><td class="c"></td><td class="n">${s.sp}</td><td class="n">${s.t}</td><td class="n">${s.v}</td></tr></tbody></table></section>`;
   };
+  // Nationalmannschaft zusammengefasst: A-Team je Wettbewerbsart ueber alle Jahre, Jugendteams je Team
+  const natCat = r => {
+    const sl = r.slug || "", n = r.comp || "";
+    if (/friendly/i.test(sl + n)) return "Testspiele";
+    if (/q\b|qual|worldq|euroq/i.test(sl + " " + n)) return "Qualifikation";
+    if (/nations/i.test(sl)) return "Nations League";
+    if (/^fifa\.world$/.test(sl)) return "Weltmeisterschaft";
+    if (/^uefa\.euro$/.test(sl)) return "Europameisterschaft";
+    return compDe(sl, n);
+  };
+  const years = (a, b) => { b = Math.min(b || a, new Date().getFullYear()); return !a ? "" : a >= b ? String(a) : `${a} bis ${b}`; };
+  const natBlock = () => {
+    const rs = d.rows.filter(r => r.kind === "nat");
+    if (!rs.length) return "";
+    const isYouth = r => /\bU\d{2}\b/.test(r.team);
+    const group = (list, keyOf) => {
+      const m = new Map();
+      for (const r of list) {
+        const k = keyOf(r), g = m.get(k) || { name: k, sp: 0, t: 0, v: 0, y1: 0, y2: 0, logo: r.tlogo };
+        g.sp += r.sp; g.t += r.t; g.v += r.v; g.y1 = g.y1 ? Math.min(g.y1, r.y1 || g.y1) : r.y1; g.y2 = Math.max(g.y2, r.y2 || 0);
+        m.set(k, g);
+      }
+      return [...m.values()].sort((a, b) => b.sp - a.sp);
+    };
+    const senior = rs.filter(r => !isYouth(r)), youth = rs.filter(isYouth);
+    const table = (title, groups, withLogo) => {
+      if (!groups.length) return "";
+      const s = sum(groups);
+      return `<section class="comp"><h2><span>${esc(title)}</span><span></span></h2><table class="car"><thead><tr><th>${withLogo ? "Team" : "Wettbewerb"}</th><th></th><th>Sp</th><th>T</th><th>V</th></tr></thead><tbody>
+        ${groups.map(g => `<tr><td class="c" colspan="2">${withLogo && g.logo ? `<img loading="lazy" src="${esc(g.logo)}" alt="" onerror="this.style.display='none'">` : ""}${esc(g.name)}<small>${esc(years(g.y1, g.y2))}</small></td><td class="n">${g.sp}</td><td class="n">${g.t}</td><td class="n">${g.v}</td></tr>`).join("")}
+        <tr class="sum"><td class="s">Gesamt</td><td class="c"></td><td class="n">${s.sp}</td><td class="n">${s.t}</td><td class="n">${s.v}</td></tr></tbody></table></section>`;
+    };
+    const seniorName = senior[0] ? deName({ id: senior[0].tid, displayName: senior[0].team }) : "";
+    return table("Nationalmannschaft" + (seniorName ? " " + seniorName : ""), group(senior, natCat), false) +
+      table("Jugend-Nationalteams", group(youth, r => deName({ id: r.tid, displayName: r.team })), true);
+  };
   box.querySelector(".dbody").innerHTML = (meta ? `<p class="pmeta">${meta}</p>` : "") +
     (d.rows.length ? `<div class="ptot"><div><b>${all.sp}</b><span>Spiele Verein</span></div><div><b>${all.t}</b><span>Tore</span></div><div><b>${all.v}</b><span>Vorlagen</span></div></div>` : `<div class="empty">Keine Karrieredaten gefunden.</div>`) +
-    block("league", "Liga") + block("intl", "International") + block("cup", "Pokale") + block("nat", "Nationalmannschaft") +
+    block("league", "Liga") + block("intl", "International") + block("cup", "Pokale") + natBlock() +
     `<p class="note">Sp = Spiele, T = Tore, V = Vorlagen. Saison 24/25 läuft von Sommer bis Sommer, Jahreszahlen ohne Schrägstrich sind Kalenderjahre. Freundschaftsspiele von Vereinen sind nicht enthalten, Länderspiele schon. Frühe Jahre in unteren Ligen können fehlen. Eine Durchschnittsbewertung liefert die Quelle nicht. Quelle: ESPN.</p>`;
 }
 $("#detail").addEventListener("click", e => {
