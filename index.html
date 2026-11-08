@@ -1744,7 +1744,7 @@ async function renderPlayer() {
   const natHTML = natName ? `<span class="pnat">${d.flag ? `<img src="${esc(d.flag)}" alt="" onerror="this.remove()">` : ""}${esc(natName)}</span>` : "";
   const meta = [esc(d.pos), natHTML, d.age ? esc(d.age + " Jahre") : ""].filter(Boolean).join(" · ");
   const sum = rs => rs.reduce((a, r) => ({ sp: a.sp + r.sp, t: a.t + r.t, v: a.v + r.v }), { sp: 0, t: 0, v: 0 });
-  const all = sum(d.rows.filter(r => r.kind !== "nat"));
+  const all = sum(d.rows.filter(r => r.kind === "league" || r.kind === "intl"));
   const block = (kind, title) => {
     const rs = d.rows.filter(r => r.kind === kind);
     if (!rs.length) return "";
@@ -1786,13 +1786,13 @@ async function renderPlayer() {
         <tr class="sum"><td class="s">Gesamt</td><td class="c"></td><td class="n">${s.sp}</td><td class="n">${s.t}</td><td class="n">${s.v}</td></tr></tbody></table></section>`;
     };
     const seniorName = senior[0] ? deName({ id: senior[0].tid, displayName: senior[0].team }) : "";
-    return table("Nationalmannschaft" + (seniorName ? " " + seniorName : ""), group(senior, natCat), false) +
-      table("Jugend-Nationalteams", group(youth, r => deName({ id: r.tid, displayName: r.team })), true);
+    // Nur die A-Nationalmannschaft, Jugendteams (U21 usw.) werden nicht gezeigt
+    return table("Nationalmannschaft" + (seniorName ? " " + seniorName : ""), group(senior, natCat), false);
   };
   box.querySelector(".dbody").innerHTML = (meta ? `<p class="pmeta">${meta}</p>` : "") +
     (d.rows.length ? `<div class="ptot"><div><b>${all.sp}</b><span>Spiele Verein</span></div><div><b>${all.t}</b><span>Tore</span></div><div><b>${all.v}</b><span>Vorlagen</span></div></div>` : `<div class="empty">Keine Karrieredaten gefunden.</div>`) +
-    block("league", "Liga") + block("intl", "International") + block("cup", "Pokale") + natBlock() +
-    `<p class="note">Sp = Spiele, T = Tore, V = Vorlagen. Saison 24/25 läuft von Sommer bis Sommer, Jahreszahlen ohne Schrägstrich sind Kalenderjahre. Freundschaftsspiele von Vereinen sind nicht enthalten, Länderspiele schon. Frühe Jahre in unteren Ligen können fehlen. Eine Durchschnittsbewertung liefert die Quelle nicht. Quelle: ESPN.</p>`;
+    block("league", "Liga") + block("intl", "International") + natBlock() +
+    `<p class="note">Sp = Spiele, T = Tore, V = Vorlagen. Saison 24/25 läuft von Sommer bis Sommer, Jahreszahlen ohne Schrägstrich sind Kalenderjahre. Pokale und Freundschaftsspiele von Vereinen sind nicht enthalten. Bei der Nationalmannschaft zählt nur die A-Mannschaft, inklusive Testspielen. Frühe Jahre in unteren Ligen können fehlen. Eine Durchschnittsbewertung liefert die Quelle nicht. Quelle: ESPN.</p>`;
 }
 $("#detail").addEventListener("click", e => {
   if (e.target.closest("[data-close]")) { closeDetail(false); return; }
