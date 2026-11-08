@@ -561,26 +561,28 @@ $("#home").addEventListener("click", () => goView("teams"));
     // Weiter Wisch oder kurzer schneller Wisch, beides zaehlt
     if (!(Math.abs(dx) >= 60 || (Math.abs(dx) >= 30 && Math.abs(dx) / ms > 0.35))) { reset(); return; }
     const dir = dx < 0 ? 1 : -1;
-    // Einheitlich ueberall: Wisch nach rechts fuehrt zurueck (Spiel, Team, Wettbewerb), Wisch nach links zeigt den naechsten Reiter
+    // Wisch vom linken Rand (rund 1 cm) nach rechts fuehrt zurueck zur Uebersicht (Spiel, Team, Wettbewerb).
+    // Wisch in der Mitte wechselt den Reiter: nach links der naechste, nach rechts der vorige. Am ersten Reiter federt die Seite nur zurueck.
+    const edge = dir < 0 && sx <= 40;
     const slideOut = (box, close) => {
       box.style.transition = "transform .2s ease-in, opacity .2s"; box.style.transform = "translateX(100%)"; box.style.opacity = "0";
       setTimeout(() => { close(); box.style.transition = "none"; box.style.transform = ""; box.style.opacity = ""; if (el) { el.style.transform = ""; el.style.opacity = ""; } }, 200);
     };
     if ($("#detail").classList.contains("open") && el === $("#detail .dbody")) {
-      if (dir < 0) { slideOut($("#detail"), () => closeDetail(false)); return; }
-      const n = DT.indexOf(detail.tab) + 1;
-      if (n < DT.length) { detail.tab = DT[n]; renderDetail(); $("#detail").scrollTop = 0; slideIn(el, 1); } else reset();
+      if (edge) { slideOut($("#detail"), () => closeDetail(false)); return; }
+      const n = DT.indexOf(detail.tab) + dir;
+      if (n >= 0 && n < DT.length) { detail.tab = DT[n]; renderDetail(); $("#detail").scrollTop = 0; slideIn(el, dir); } else reset();
       return;
     }
     if ($("#teamview").classList.contains("open") && el === $("#teamview")) {
-      if (dir < 0) slideOut(el, () => closeTeam(false)); else reset();
+      if (edge) slideOut(el, () => closeTeam(false)); else reset();
       return;
     }
     if (state.view === "comps" && state.compSel && el === $("#app")) {
-      if (dir < 0) { compBack(); return; }
+      if (edge) { compBack(); return; }
       const subs = [...document.querySelectorAll("#app [data-compsub]")].map(b => b.dataset.compsub);
-      const n = subs.indexOf(state.compSub || "games") + 1;
-      if (n > 0 && n < subs.length) { state.compSub = subs[n]; store.set("sr_compsub", state.compSub); render(true); window.scrollTo(0, 0); slideIn(el, 1); } else reset();
+      const i = subs.indexOf(state.compSub || "games"), n = i + dir;
+      if (i >= 0 && n >= 0 && n < subs.length) { state.compSub = subs[n]; store.set("sr_compsub", state.compSub); render(true); window.scrollTo(0, 0); slideIn(el, dir); } else reset();
       return;
     }
     const n = VIEW_ORDER.indexOf(state.view) + dir;
