@@ -314,7 +314,9 @@ nav button.active{opacity:1;color:#fff;font-weight:600}
 .vids,.sub{margin-left:62px}
 /* Wettbewerbe als Kacheln */
 .cgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.ctile{border:0;color:#fff;text-align:left;font-family:inherit;font-size:18px;font-weight:400;padding:52px 12px 10px;cursor:pointer;line-height:1.2}
+.ctile{border:0;color:#fff;text-align:left;font-family:inherit;font-size:18px;font-weight:400;padding:12px 12px 10px;cursor:pointer;line-height:1.2}
+.ctile .clogo{display:block;width:40px;height:40px;object-fit:contain;margin-bottom:12px}
+.ctile .clogo.none{visibility:hidden}
 /* Tabellen groesser */
 .tbl{font-size:18px}.tbl th{font-size:15px}.tbl th,.tbl td{padding:9px 3px}.tbl td.t{max-width:118px}.tbl td.t img{width:22px;height:22px}
 .lead{font-size:18px}.lead small{font-size:15px}.lead .v{font-size:21px}
@@ -1073,7 +1075,13 @@ async function viewComps() {
   ];
   const PAL = ["#1ba1e2", "#a200ff", "#e51400", "#f09609", "#00aba9", "#8cbf26"];
   let k = 0;
-  return groups.filter(g => g[1].length).map(([t, l]) => `<section class="comp"><h2><span>${t}</span><span></span></h2><div class="cgrid">${l.map(c => `<button class="ctile" style="background:${COMP_COLOR[c.slug] || PAL[k++ % PAL.length]}" data-comp="${c.slug}"><span>${esc(c.name)}</span></button>`).join("")}</div></section>`).join("");
+  // Logos der Wettbewerbe: ESPN liefert eine Variante fuer dunkle Hintergruende, die NB I kommt von TheSportsDB
+  const LOGO_ID = { "uefa.champions": 2, "uefa.europa": 2310, "uefa.europa.conf": 20296, "uefa.nations": 2395, "uefa.euroq": 56, "uefa.euro": 74, "fifa.worldq.uefa": 67, "fifa.world": 4, "fifa.friendly": 53, "ger.1": 10, "eng.1": 23, "esp.1": 15, "ita.1": 12, "fra.1": 9, "ned.1": 11, "por.1": 14, "ger.dfb_pokal": 2061, "eng.fa": 40, "eng.league_cup": 41 };
+  const logo = c => {
+    const u = c.slug === "hun.1" ? "https://r2.thesportsdb.com/images/media/league/badge/7o3q3t1616017529.png/small" : LOGO_ID[c.slug] ? `https://a.espncdn.com/i/leaguelogos/soccer/500-dark/${LOGO_ID[c.slug]}.png` : "";
+    return u ? `<img class="clogo" src="${u}" alt="" loading="lazy" onerror="this.classList.add('none')">` : `<span class="clogo none"></span>`;
+  };
+  return groups.filter(g => g[1].length).map(([t, l]) => `<section class="comp"><h2><span>${t}</span><span></span></h2><div class="cgrid">${l.map(c => `<button class="ctile" style="background:${COMP_COLOR[c.slug] || PAL[k++ % PAL.length]}" data-comp="${c.slug}">${logo(c)}<span>${esc(c.name)}</span></button>`).join("")}</div></section>`).join("");
 }
 // Spiele der letzten und naechsten zwei Monate laden und nach Spieltagen (zusammenhaengende Tage) gruppieren
 async function compRounds(slug) {
