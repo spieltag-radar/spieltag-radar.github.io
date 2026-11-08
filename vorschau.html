@@ -167,25 +167,24 @@ body.noscroll{overflow:hidden}
 .sw small{display:block;color:#bdbdbd;font-size:15px;margin-top:2px}
 .bench{display:flex;flex-wrap:wrap;gap:6px 14px;padding:8px 0 4px;font-size:16px;color:#d6d6d6}
 .bench i{font-style:normal;color:var(--muted);margin-right:5px;font-variant-numeric:tabular-nums}
-/* Aufstellung im Google-Stil */
+/* Aufstellung im Google-Stil: alle Elemente in festen Zeilen, gleiche Schriftgroesse, Plaketten gleich gross an festen Ecken */
 .glu .ghead{display:flex;align-items:center;gap:10px;padding:12px 2px;font-size:19px}
-.glu .gsw{width:14px;height:14px;display:inline-block}
+.glu .gsw{width:14px;height:14px;display:inline-block;box-shadow:0 0 0 1px rgba(255,255,255,.4)}
 .glu .gform{margin-left:auto;background:#1d5c34;color:#fff;font-size:15px;padding:3px 10px;font-variant-numeric:tabular-nums}
 .gpitch{position:relative;background:#1d5c34;overflow:hidden}
 .gpitch .pline.box{left:25%;right:25%;height:70px}
 .gp{position:absolute;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;text-align:center}
-.gc{position:relative;width:46px;height:46px;border-radius:50%!important;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;box-shadow:0 2px 5px rgba(0,0,0,.45);border:2px solid rgba(255,255,255,.85)}
-.gc .b{position:absolute;display:flex;align-items:center;justify-content:center;font-size:11px;line-height:1}
-.gc .off{top:-8px;left:-22px;background:#b3261e;color:#fff;font-weight:700;padding:2px 4px;font-size:11px;white-space:nowrap}
-.gc .cd{top:-6px;right:-8px;width:11px;height:15px}
+.gc{position:relative;width:44px;height:44px;flex:none;border-radius:50%!important;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;box-shadow:0 2px 5px rgba(0,0,0,.45)}
+.gc .b{position:absolute;width:18px;height:18px;display:flex;align-items:center;justify-content:center;line-height:1;border-radius:50%!important;box-shadow:0 1px 2px rgba(0,0,0,.5)}
+.gc .cd{top:-3px;right:-5px;width:12px;height:16px;border-radius:2px!important}
 .gc .cd.y{background:#facc15}.gc .cd.r{background:#ef4444}
-.gc .gl2{bottom:-4px;right:-16px;font-size:12px}
-.gc .as{bottom:-4px;left:-14px;width:16px;height:16px;border-radius:50%!important;background:#111;color:#fff;font-weight:700;font-size:10px}
-.rt{display:inline-block;font-size:13px;font-weight:700;padding:1px 5px;line-height:16px;font-variant-numeric:tabular-nums}
-.gc .rt{position:absolute;bottom:-11px;left:50%;transform:translateX(-50%)}
+.gc .gl2{bottom:-3px;right:-6px;width:auto;min-width:18px;padding:0 2px;border-radius:9px!important;background:#fff;color:#111;font-size:10px;font-weight:800}
+.gc .as{bottom:-3px;left:-6px;background:#111;color:#fff;font-weight:800;font-size:10px}
+.grt{height:20px;margin-top:3px;display:flex;align-items:center;justify-content:center}
+.rt{display:inline-block;font-size:13px;font-weight:700;padding:0 6px;line-height:18px;font-variant-numeric:tabular-nums}
 .rt.hi{background:#2e7d32;color:#fff}.rt.mid{background:#d4a72c;color:#111}.rt.lo{background:#c2410c;color:#fff}
-.gn{margin-top:14px;font-size:14px;font-weight:600;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;height:18px;line-height:18px}
-.gn.long{font-size:12px}
+.gn{margin-top:2px;font-size:13px;letter-spacing:-.2px;font-weight:600;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;height:18px;line-height:18px}
+.gs{height:16px;line-height:16px;font-size:12px;font-weight:700;color:#ffb4ab;font-variant-numeric:tabular-nums}
 .gnote{padding:10px 2px 0}
 .sw{grid-template-columns:48px 1fr auto;align-items:center}
 /* ================= Design "Metro dunkel" (Windows-Phone-Stil, gewaehlt am 06.11.2026) ================= */
@@ -1334,8 +1333,8 @@ function matchLineupHTML(s, hide) {
   let colA = teamColor(cA?.team || a.team, "#e5e5e5");
   if (colA.toLowerCase() === colH.toLowerCase()) colA = teamColor({ color: (cA?.team || a.team)?.alternateColor }, "#e5e5e5");
   const subsH = subsOf(s, h.team?.id), subsA = subsOf(s, a.team?.id);
-  const ROW = 104, PAD = 26, nH = rowsH.length, nA = rowsA.length, height = (nH + nA) * ROW + PAD * 2;
-  const short = p => { const at = p.athlete || {}; return at.shortName || at.displayName || ""; };
+  const ROW = 112, PAD = 22, nH = rowsH.length, nA = rowsA.length, height = (nH + nA) * ROW + PAD * 2;
+  const short = p => { const at = p.athlete || {}; return at.lastName || (at.displayName || "").split(" ").slice(-1)[0] || at.shortName || ""; };
   const dot = (p, team, top) => {
     const isH = team === "h", col = isH ? colH : colA, subs = isH ? subsH : subsA;
     const ctx = { res: isH ? Math.sign(gH - gA) : Math.sign(gA - gH), against: isH ? gA : gH };
@@ -1343,19 +1342,21 @@ function matchLineupHTML(s, hide) {
     const off = hide ? "" : subs.out.get(String(p.athlete?.id || ""));
     const g = hide ? 0 : v("totalGoals"), as = hide ? 0 : v("goalAssists"), yc = !hide && v("yellowCards"), rc = !hide && v("redCards");
     const nm = short(p);
+    // Feste Zeilen fuer alle Spieler: Kreis, Bewertung, Name, Wechselminute. Symbole nur als gleich grosse Plaketten an festen Ecken.
+    const rt = showRating ? ownRating(p, ctx) : null;
     return `<div class="gp" style="top:${top}px;left:${p._x}%;width:${p._w}%">
       <div class="gc" style="background:${col};color:${textOn(col)}">${esc(p.jersey || "")}
-        ${off ? `<span class="b off">↓${esc(off)}</span>` : ""}
         ${rc ? `<span class="b cd r"></span>` : yc ? `<span class="b cd y"></span>` : ""}
-        ${g ? `<span class="b gl2">${"⚽".repeat(Math.min(g, 3))}</span>` : ""}
-        ${as ? `<span class="b as" title="Vorlage">A</span>` : ""}
-        ${showRating ? `<span class="rt ${ratingCls(ownRating(p, ctx))}">${fmtRating(ownRating(p, ctx))}</span>` : ""}</div>
-      <div class="gn${nm.length > 12 ? " long" : ""}">${esc(nm)}</div></div>`;
+        ${g ? `<span class="b gl2">${g > 1 ? g : ""}⚽</span>` : ""}
+        ${as ? `<span class="b as" title="Vorlage">A</span>` : ""}</div>
+      <div class="grt">${rt != null ? `<span class="rt ${ratingCls(rt)}">${fmtRating(rt)}</span>` : ""}</div>
+      <div class="gn">${esc(nm)}</div>
+      <div class="gs">${off ? `↓ ${esc(off)}` : ""}</div></div>`;
   };
   const place = (rows, team) => rows.map((row, ri) => {
     const k = row.length, list = team === "h" ? row.slice().reverse() : row; // Heimteam spielt nach unten, daher Seiten gespiegelt
     return list.map((p, pi) => {
-      p._x = k >= 4 ? (pi + 0.5) * 100 / k : (pi + 1) * 100 / (k + 1); p._w = k >= 4 ? 100 / k : 30;
+      const X = { 1: [50], 2: [30, 70], 3: [18, 50, 82], 4: [12.5, 37.5, 62.5, 87.5], 5: [10, 30, 50, 70, 90] }; p._x = X[k] ? X[k][pi] : (pi + 0.5) * 100 / k; p._w = Math.min(100 / Math.max(k, 3), 30);
       const top = team === "h" ? PAD + ri * ROW : height - PAD - (ri + 1) * ROW;
       return dot(p, team, top);
     }).join("");
