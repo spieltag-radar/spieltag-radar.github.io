@@ -186,6 +186,7 @@ body.noscroll{overflow:hidden}
 .gn{margin-top:2px;font-size:13px;letter-spacing:-.2px;font-weight:600;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;height:18px;line-height:18px}
 .gs{height:16px;line-height:16px;font-size:12px;font-weight:700;color:#ffb4ab;font-variant-numeric:tabular-nums}
 .gnote{padding:10px 2px 0}
+#detail.lu .dhead{position:static}
 .sw{grid-template-columns:48px 1fr auto;align-items:center}
 /* ================= Design "Metro dunkel" (Windows-Phone-Stil, gewaehlt am 06.11.2026) ================= */
 :root{--bg:#000000;--card:#000000;--card2:#1c1c1c;--line:#262626;--text:#ffffff;--muted:#8c8c8c;--accent:#1ba1e2;--live:#1ba1e2}
@@ -1465,6 +1466,7 @@ async function renderDetail(force) {
       <div class="st${st.live ? " live" : ""}">${esc(st.state === "pre" ? berlin(evLike.date, { weekday:"long", day:"2-digit", month:"2-digit" }) + ", " + st.label + " Uhr" : st.label)}</div></div>
     <div data-team="${esc(away.team.id)}">${tlogo(away.team)}<div class="tn">${esc(deName(away.team))}</div>${scorers(away.team.id)}</div>`;
   box.querySelectorAll(".dtabs button").forEach(b => b.classList.toggle("active", b.dataset.dtab === detail.tab));
+  box.classList.toggle("lu", detail.tab === "lineups"); // in der Aufstellung scrollt der Spielkopf mit, damit mehr Platz fuers Feld bleibt
   const body = box.querySelector(".dbody");
   if (hide && detail.tab !== "lineups") {
     body.innerHTML = `<div class="empty">Spoiler-Schutz ist an. Ereignisse, Statistik und Ticker verraten das Ergebnis.<br><br><button class="reveal" data-reveal="${esc(detail.id)}">Trotzdem anzeigen</button><br><br>Die Aufstellungen kannst du ohne Spoiler ansehen.</div>`;
