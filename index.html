@@ -91,7 +91,7 @@ footer{color:var(--muted);font-size:13px;text-align:center;padding:8px 14px 24px
 #teamview,#playerview{position:fixed;inset:0;z-index:20;background:var(--bg);overflow-y:auto;display:none;-webkit-overflow-scrolling:touch}
 #teamview.open,#playerview.open{display:block}
 [data-player]{cursor:pointer}
-.pmeta{color:var(--muted);font-size:15px;margin:-6px 0 12px}
+.pmeta{color:var(--muted);font-size:15px;margin:-6px 0 12px}.pnat{white-space:nowrap}.pnat img{width:22px;height:15px;object-fit:cover;border-radius:2px;vertical-align:-2px;margin-right:6px}
 .ptot{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 14px}.ptot div{background:var(--card);border-radius:10px;padding:10px;text-align:center}.ptot b{display:block;font-size:24px}.ptot span{color:var(--muted);font-size:14px}
 .car{width:100%;border-collapse:collapse;font-size:16px}.car th{color:var(--muted);font-weight:500;font-size:14px;text-align:right;padding:6px 4px}.car th:first-child,.car th:nth-child(2){text-align:left}
 .car td{padding:8px 4px;border-top:1px solid var(--line);text-align:right;vertical-align:middle}.car td.s{text-align:left;white-space:nowrap;color:var(--muted);font-variant-numeric:tabular-nums}.car td.c{text-align:left}
@@ -1106,12 +1106,19 @@ async function compPage(slug) {
     <button data-round="1" aria-label="Nächste Runde"${state.compRound === rounds.length - 1 ? " disabled" : ""}>›</button></div>`;
   const byDay = new Map();
   r.forEach(e => { evIndex.set(e.id, e); if (statusInfo(e).live) state.hasLive = true; const k = ymd(new Date(e.date)); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push(e); });
-  for (const evs of byDay.values()) {
+  for (const evs of dayOrder(byDay)) {
     html += `<section class="comp"><h2><span>${esc(berlin(evs[0].date, { weekday: "long", day: "2-digit", month: "2-digit" }))}</span><span>${evs.length}</span></h2>${evs.map(e => matchHTML(e, slug)).join("")}</section>`;
   }
   return html;
 }
 
+// Tage einer Runde: Laeuft die Runde schon, steht der juengste Tag oben (heute, gestern, vorgestern).
+// Liegt die ganze Runde noch in der Zukunft, steht der naechste Tag oben.
+function dayOrder(byDay) {
+  const keys = [...byDay.keys()].sort(), today = ymd(new Date());
+  if (keys.length && keys[0] <= today) keys.reverse();
+  return keys.map(k => byDay.get(k));
+}
 /* ================= Ungarn NB I ueber TheSportsDB ================= */
 const TSDB = "https://www.thesportsdb.com/api/v1/json/123/";
 async function tsdbRound(c, season, r) {
@@ -1190,7 +1197,7 @@ async function tsdbPage(slug) {
   if (!evs.length) return html + `<div class="empty">Für diesen Spieltag sind noch keine Spiele eingetragen.</div>`;
   const byDay = new Map();
   evs.forEach(e => { evIndex.set(e.id, e); const k = ymd(new Date(e.date)); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push(e); });
-  for (const list of byDay.values()) html += `<section class="comp"><h2><span>${esc(berlin(list[0].date, { weekday: "long", day: "2-digit", month: "2-digit" }))}</span><span>${list.length}</span></h2>${list.map(e => matchHTML(e, slug, { noDetail: true })).join("")}</section>`;
+  for (const list of dayOrder(byDay)) html += `<section class="comp"><h2><span>${esc(berlin(list[0].date, { weekday: "long", day: "2-digit", month: "2-digit" }))}</span><span>${list.length}</span></h2>${list.map(e => matchHTML(e, slug, { noDetail: true })).join("")}</section>`;
   return html + `<p class="note">Quelle: TheSportsDB. Ergebnisse erscheinen erst nach Spielende, Spieldetails gibt es für diese Liga nicht. Videos vom ungarischen Verband (MLSZ).</p>`;
 }
 
@@ -1666,7 +1673,7 @@ function seasonLabel(se) {
   return !b || a === b ? a : `${a.slice(2)}/${b.slice(2)}`;
 }
 async function careerData(id) {
-  const k = "sr_car2_" + id, hit = store.get(k, null);
+  const k = "sr_car3_" + id, hit = store.get(k, null);
   if (hit && Date.now() - hit.t < 6 * 3600000) return hit.v;
   const [log, ath] = await Promise.all([getJSON(`${CORE}athletes/${id}/statisticslog`, 6 * 3600000), getJSON(`${CORE}athletes/${id}`, 24 * 3600000).catch(() => ({}))]);
   const rows = await Promise.all((log.entries || []).map(async e => {
@@ -1686,7 +1693,7 @@ async function careerData(id) {
   }));
   const pos = ath.position?.abbreviation;
   const v = {
-    name: ath.displayName || "", age: ath.age || null, nat: ath.citizenship || ath.flag?.alt || "", pos: POS_DE[pos] ?? ath.position?.displayName ?? "",
+    name: ath.displayName || "", age: ath.age || null, nat: ath.citizenship || ath.flag?.alt || "", pos: ({ Goalkeeper: "Torwart", Defender: "Abwehr", Midfielder: "Mittelfeld", Forward: "Sturm" })[ath.position?.displayName] || POS_DE[pos] || ath.position?.displayName || "", flag: ath.flag?.href || "",
     rows: []
   };
   // Ligen mit geteilter Saison (z. B. Dänemark: Grunddurchgang und Meisterrunde) als eine Zeile zusammenfassen
@@ -1719,7 +1726,9 @@ async function renderPlayer() {
   const natRows = d.rows.filter(r => r.kind === "nat" && !/\bU\d{2}\b/.test(r.team));
   const natTeam = natRows[0] ? deName({ id: natRows[0].tid, displayName: natRows[0].team }) : "";
   const NAT_DE = { Germany: "Deutschland", Spain: "Spanien", France: "Frankreich", Brazil: "Brasilien", Netherlands: "Niederlande", Italy: "Italien", Argentina: "Argentinien", Belgium: "Belgien", Austria: "Österreich", Switzerland: "Schweiz", Hungary: "Ungarn", Denmark: "Dänemark", Croatia: "Kroatien", Poland: "Polen", Turkey: "Türkei", "Türkiye": "Türkei", Norway: "Norwegen", Sweden: "Schweden", "United States": "USA", Japan: "Japan", "South Korea": "Südkorea", Morocco: "Marokko", Senegal: "Senegal", Nigeria: "Nigeria", Ghana: "Ghana", "Ivory Coast": "Elfenbeinküste", Cameroon: "Kamerun", Uruguay: "Uruguay", Colombia: "Kolumbien", Mexico: "Mexiko", Serbia: "Serbien", Ukraine: "Ukraine", Czechia: "Tschechien", "Czech Republic": "Tschechien", Slovakia: "Slowakei", Slovenia: "Slowenien", Scotland: "Schottland", Wales: "Wales", Ireland: "Irland", Greece: "Griechenland", Georgia: "Georgien", Albania: "Albanien", Kosovo: "Kosovo", Egypt: "Ägypten", Algeria: "Algerien", Tunisia: "Tunesien", Ecuador: "Ecuador", Canada: "Kanada", Australia: "Australien", Iceland: "Island", Finland: "Finnland", Romania: "Rumänien", Bulgaria: "Bulgarien", "Bosnia and Herzegovina": "Bosnien und Herzegowina", Portugal: "Portugal", England: "England" };
-  const meta = [d.pos, natTeam || NAT_DE[String(d.nat).replace(/\s*U\d{2}$/, "")] || String(d.nat).replace(/\s*U\d{2}$/, ""), d.age ? d.age + " Jahre" : ""].filter(Boolean).join(" · ");
+  const natName = natTeam || NAT_DE[String(d.nat).replace(/\s*U\d{2}$/, "")] || String(d.nat).replace(/\s*U\d{2}$/, "");
+  const natHTML = natName ? `<span class="pnat">${d.flag ? `<img src="${esc(d.flag)}" alt="" onerror="this.remove()">` : ""}${esc(natName)}</span>` : "";
+  const meta = [esc(d.pos), natHTML, d.age ? esc(d.age + " Jahre") : ""].filter(Boolean).join(" · ");
   const sum = rs => rs.reduce((a, r) => ({ sp: a.sp + r.sp, t: a.t + r.t, v: a.v + r.v }), { sp: 0, t: 0, v: 0 });
   const all = sum(d.rows.filter(r => r.kind !== "nat"));
   const block = (kind, title) => {
@@ -1730,7 +1739,7 @@ async function renderPlayer() {
       ${rs.map(r => `<tr><td class="s">${esc(r.season)}</td><td class="c">${r.tlogo ? `<img loading="lazy" src="${esc(r.tlogo)}" alt="" onerror="this.style.display='none'">` : ""}${esc(deName({ id: r.tid, displayName: r.team }))}<small>${esc(compDe(r.slug, r.comp))}</small></td><td class="n">${r.sp}</td><td class="n">${r.t}</td><td class="n">${r.v}</td></tr>`).join("")}
       <tr class="sum"><td class="s">Gesamt</td><td class="c"></td><td class="n">${s.sp}</td><td class="n">${s.t}</td><td class="n">${s.v}</td></tr></tbody></table></section>`;
   };
-  box.querySelector(".dbody").innerHTML = (meta ? `<p class="pmeta">${esc(meta)}</p>` : "") +
+  box.querySelector(".dbody").innerHTML = (meta ? `<p class="pmeta">${meta}</p>` : "") +
     (d.rows.length ? `<div class="ptot"><div><b>${all.sp}</b><span>Spiele Verein</span></div><div><b>${all.t}</b><span>Tore</span></div><div><b>${all.v}</b><span>Vorlagen</span></div></div>` : `<div class="empty">Keine Karrieredaten gefunden.</div>`) +
     block("league", "Liga") + block("intl", "International") + block("cup", "Pokale") + block("nat", "Nationalmannschaft") +
     `<p class="note">Sp = Spiele, T = Tore, V = Vorlagen. Saison 24/25 läuft von Sommer bis Sommer, Jahreszahlen ohne Schrägstrich sind Kalenderjahre. Freundschaftsspiele von Vereinen sind nicht enthalten, Länderspiele schon. Frühe Jahre in unteren Ligen können fehlen. Eine Durchschnittsbewertung liefert die Quelle nicht. Quelle: ESPN.</p>`;
