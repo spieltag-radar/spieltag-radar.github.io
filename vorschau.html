@@ -6,6 +6,7 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#000000">
 <title>Spieltag-Radar</title>
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%2322c55e'/%3E%3Ccircle cx='50' cy='50' r='18' fill='%230f1115'/%3E%3C/svg%3E">
 <style>
 :root{
@@ -152,16 +153,41 @@ body.noscroll{overflow:hidden}
 .pline{border-color:rgba(255,255,255,.22)}
 .pp{transform:translate(-50%,-18px)}
 .pn{width:36px;height:36px;font-size:17px;border-radius:50%!important}
-.pnm{margin-top:4px;font-size:15px;max-width:100%;text-shadow:0 1px 3px rgba(0,0,0,.9)}
+.pnm{margin-top:4px;font-size:15px;height:20px;line-height:20px;max-width:100%;text-shadow:0 1px 3px rgba(0,0,0,.9)}
 .pnm.long{font-size:12.5px;letter-spacing:-.2px}
-.pic{display:flex;gap:4px;align-items:center;margin-top:3px;font-size:13px}
-.pic .off{background:rgba(0,0,0,.55);color:#fff;font-weight:600;padding:1px 5px;font-variant-numeric:tabular-nums}
+.pic{display:flex;gap:5px;align-items:center;justify-content:center;height:22px;margin-top:2px;font-size:13px}
+.pic>span{display:flex;gap:4px;align-items:center;height:20px}
+.cd{display:inline-block;width:11px;height:15px;border-radius:1px!important;vertical-align:middle}
+.cd.y{background:#facc15}.cd.r{background:#ef4444}
+.gl{font-style:normal;font-size:13px;line-height:20px;letter-spacing:1px}
+.pic .off{background:rgba(0,0,0,.55);color:#fff;font-weight:600;height:20px;line-height:20px;padding:0 5px;font-variant-numeric:tabular-nums}
 .sw{display:grid;grid-template-columns:48px 1fr;gap:8px;padding:9px 0;border-bottom:1px solid var(--line);font-size:18px}
 .sw .m{color:var(--accent);font-weight:600;font-variant-numeric:tabular-nums}
 .sw b{font-weight:600}
 .sw small{display:block;color:#bdbdbd;font-size:15px;margin-top:2px}
 .bench{display:flex;flex-wrap:wrap;gap:6px 14px;padding:8px 0 4px;font-size:16px;color:#d6d6d6}
 .bench i{font-style:normal;color:var(--muted);margin-right:5px;font-variant-numeric:tabular-nums}
+/* Aufstellung im Google-Stil */
+.glu .ghead{display:flex;align-items:center;gap:10px;padding:12px 2px;font-size:19px}
+.glu .gsw{width:14px;height:14px;display:inline-block}
+.glu .gform{margin-left:auto;background:#1d5c34;color:#fff;font-size:15px;padding:3px 10px;font-variant-numeric:tabular-nums}
+.gpitch{position:relative;background:#1d5c34;overflow:hidden}
+.gpitch .pline.box{left:25%;right:25%;height:70px}
+.gp{position:absolute;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;text-align:center}
+.gc{position:relative;width:46px;height:46px;border-radius:50%!important;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;box-shadow:0 2px 5px rgba(0,0,0,.45);border:2px solid rgba(255,255,255,.85)}
+.gc .b{position:absolute;display:flex;align-items:center;justify-content:center;font-size:11px;line-height:1}
+.gc .off{top:-8px;left:-22px;background:#b3261e;color:#fff;font-weight:700;padding:2px 4px;font-size:11px;white-space:nowrap}
+.gc .cd{top:-6px;right:-8px;width:11px;height:15px}
+.gc .cd.y{background:#facc15}.gc .cd.r{background:#ef4444}
+.gc .gl2{bottom:-4px;right:-16px;font-size:12px}
+.gc .as{bottom:-4px;left:-14px;width:16px;height:16px;border-radius:50%!important;background:#111;color:#fff;font-weight:700;font-size:10px}
+.rt{display:inline-block;font-size:13px;font-weight:700;padding:1px 5px;line-height:16px;font-variant-numeric:tabular-nums}
+.gc .rt{position:absolute;bottom:-11px;left:50%;transform:translateX(-50%)}
+.rt.hi{background:#2e7d32;color:#fff}.rt.mid{background:#d4a72c;color:#111}.rt.lo{background:#c2410c;color:#fff}
+.gn{margin-top:14px;font-size:14px;font-weight:600;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;height:18px;line-height:18px}
+.gn.long{font-size:12px}
+.gnote{padding:10px 2px 0}
+.sw{grid-template-columns:48px 1fr auto;align-items:center}
 /* ================= Design "Metro dunkel" (Windows-Phone-Stil, gewaehlt am 06.11.2026) ================= */
 :root{--bg:#000000;--card:#000000;--card2:#1c1c1c;--line:#262626;--text:#ffffff;--muted:#8c8c8c;--accent:#1ba1e2;--live:#1ba1e2}
 html,body{font-family:"Segoe UI","Segoe WP",Inter,-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text)}
@@ -1204,8 +1230,9 @@ function subsOf(s, teamId) {
 function playerMarks(p) {
   const st = p.stats || [], val = n => +(st.find(x => x.name === n)?.value || 0);
   let ic = "";
-  const g = val("totalGoals"); if (g) ic += "⚽".repeat(Math.min(g, 3));
-  if (val("redCards")) ic += "🟥"; else if (val("yellowCards")) ic += "🟨";
+  const g = val("totalGoals"); if (g) ic += `<i class="gl">${"⚽".repeat(Math.min(g, 3))}</i>`;
+  // Karten als gleich hohe Rechtecke statt Emoji, damit alle Markierungen auf einer Hoehe sitzen
+  if (val("redCards")) ic += `<i class="cd r" title="Rote Karte"></i>`; else if (val("yellowCards")) ic += `<i class="cd y" title="Gelbe Karte"></i>`;
   return ic;
 }
 function pitchHTML(r, subs, hide) {
@@ -1258,6 +1285,102 @@ function lineupHTML(r, s, hide) {
     ${subRows ? `<h4><span>Wechsel</span><span></span></h4>${subRows}` : ""}
     ${unused.length ? `<h4><span>${changes.length ? "Nicht eingesetzt" : "Bank"}</span><span></span></h4><div class="bench">${unused.map(p => `<span><i>${esc(p.jersey || "")}</i>${esc(p.athlete?.displayName || "")}</span>`).join("")}</div>` : ""}</section>`;
 }
+// ===== Aufstellung im Google-Stil: beide Teams auf einem Feld (Heim oben, Gast unten) =====
+// Eigene Leistungszahl aus den ESPN-Werten (ESPN liefert keine Noten). 6,0 = durchschnittlich, Spanne 3,0 bis 10,0.
+function ownRating(p, ctx) {
+  const st = p.stats || [], v = n => +(st.find(x => x.name === n)?.value || 0);
+  const pos = p.position?.abbreviation || "", depth = posDepth(pos);
+  let r = 6.0;
+  r += 1.0 * v("totalGoals") + 0.7 * v("goalAssists");
+  r += 0.15 * Math.min(v("shotsOnTarget"), 4);
+  r += Math.min(0.03 * v("foulsSuffered"), 0.3) - Math.min(0.05 * v("foulsCommitted"), 0.4);
+  r -= 0.3 * v("yellowCards") + 1.5 * v("redCards") + 1.0 * v("ownGoals");
+  if (pos === "G") { r += Math.min(0.25 * v("saves"), 2.0) - 0.3 * ctx.against + (ctx.against === 0 ? 0.7 : 0); }
+  else if (depth === 1) { r -= 0.15 * ctx.against; if (ctx.against === 0) r += 0.4; }
+  r += ctx.res > 0 ? 0.3 : ctx.res < 0 ? -0.3 : 0;
+  return Math.max(3, Math.min(10, Math.round(r * 10) / 10));
+}
+const fmtRating = r => r.toFixed(1).replace(".", ",");
+const ratingCls = r => r >= 7 ? "hi" : r >= 6 ? "mid" : "lo";
+function teamColor(t, fallback) {
+  const c = (t?.color || "").replace("#", "");
+  return /^[0-9a-f]{6}$/i.test(c) ? "#" + c : fallback;
+}
+function textOn(hex) {
+  const n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  return (0.299 * r + 0.587 * g + 0.114 * b) > 160 ? "#111" : "#fff";
+}
+function lineRows(r) {
+  const st = (r.roster || []).filter(p => p.starter);
+  const gk = st.filter(p => p.position?.abbreviation === "G");
+  const field = st.filter(p => p.position?.abbreviation !== "G").sort((a, b) => posDepth(a.position?.abbreviation) - posDepth(b.position?.abbreviation) || (a.formationPlace || 99) - (b.formationPlace || 99));
+  let counts = String(r.formation || "").split("-").map(n => parseInt(n, 10)).filter(n => n > 0);
+  if (counts.reduce((s, n) => s + n, 0) !== field.length || gk.length !== 1) return null;
+  const rows = [gk]; let i = 0;
+  for (const n of counts) { rows.push(field.slice(i, i + n).sort((a, b) => posLat(a.position?.abbreviation) - posLat(b.position?.abbreviation))); i += n; }
+  return rows;
+}
+function matchLineupHTML(s, hide) {
+  const rs = s.rosters || [];
+  const h = rs.find(r => r.homeAway === "home") || rs[0], a = rs.find(r => r.homeAway === "away") || rs[1];
+  const comp = s.header?.competitions?.[0] || {};
+  const cH = comp.competitors?.find(c => c.homeAway === "home"), cA = comp.competitors?.find(c => c.homeAway === "away");
+  const gH = parseInt(cH?.score, 10) || 0, gA = parseInt(cA?.score, 10) || 0;
+  const started = !!comp.status?.type && comp.status.type.state !== "pre";
+  const showRating = started && !hide;
+  const rowsH = h && lineRows(h), rowsA = a && lineRows(a);
+  if (!rowsH || !rowsA) return (h ? lineupHTML(h, s, hide) : "") + (a ? lineupHTML(a, s, hide) : "");
+  const colH = teamColor(cH?.team || h.team, "#1ba1e2");
+  let colA = teamColor(cA?.team || a.team, "#e5e5e5");
+  if (colA.toLowerCase() === colH.toLowerCase()) colA = teamColor({ color: (cA?.team || a.team)?.alternateColor }, "#e5e5e5");
+  const subsH = subsOf(s, h.team?.id), subsA = subsOf(s, a.team?.id);
+  const ROW = 104, PAD = 26, nH = rowsH.length, nA = rowsA.length, height = (nH + nA) * ROW + PAD * 2;
+  const short = p => { const at = p.athlete || {}; return at.shortName || at.displayName || ""; };
+  const dot = (p, team, top) => {
+    const isH = team === "h", col = isH ? colH : colA, subs = isH ? subsH : subsA;
+    const ctx = { res: isH ? Math.sign(gH - gA) : Math.sign(gA - gH), against: isH ? gA : gH };
+    const st = p.stats || [], v = n => +(st.find(x => x.name === n)?.value || 0);
+    const off = hide ? "" : subs.out.get(String(p.athlete?.id || ""));
+    const g = hide ? 0 : v("totalGoals"), as = hide ? 0 : v("goalAssists"), yc = !hide && v("yellowCards"), rc = !hide && v("redCards");
+    const nm = short(p);
+    return `<div class="gp" style="top:${top}px;left:${p._x}%;width:${p._w}%">
+      <div class="gc" style="background:${col};color:${textOn(col)}">${esc(p.jersey || "")}
+        ${off ? `<span class="b off">↓${esc(off)}</span>` : ""}
+        ${rc ? `<span class="b cd r"></span>` : yc ? `<span class="b cd y"></span>` : ""}
+        ${g ? `<span class="b gl2">${"⚽".repeat(Math.min(g, 3))}</span>` : ""}
+        ${as ? `<span class="b as" title="Vorlage">A</span>` : ""}
+        ${showRating ? `<span class="rt ${ratingCls(ownRating(p, ctx))}">${fmtRating(ownRating(p, ctx))}</span>` : ""}</div>
+      <div class="gn${nm.length > 12 ? " long" : ""}">${esc(nm)}</div></div>`;
+  };
+  const place = (rows, team) => rows.map((row, ri) => {
+    const k = row.length, list = team === "h" ? row.slice().reverse() : row; // Heimteam spielt nach unten, daher Seiten gespiegelt
+    return list.map((p, pi) => {
+      p._x = k >= 4 ? (pi + 0.5) * 100 / k : (pi + 1) * 100 / (k + 1); p._w = k >= 4 ? 100 / k : 30;
+      const top = team === "h" ? PAD + ri * ROW : height - PAD - (ri + 1) * ROW;
+      return dot(p, team, top);
+    }).join("");
+  }).join("");
+  const head = (c, r, col) => `<div class="ghead"><span class="gsw" style="background:${col}"></span><b>${esc(deName(c?.team || r.team))}</b><span class="gform">${esc(r.formation || "")}</span></div>`;
+  const subBlock = (r, subs, team) => {
+    if (hide || !subs.list.length) return "";
+    const byId = new Map(r.roster.map(p => [String(p.athlete?.id || ""), p]));
+    const ctx = team === "h" ? { res: Math.sign(gH - gA), against: gA } : { res: Math.sign(gA - gH), against: gH };
+    return `<h4><span>Wechsel ${esc(deName(r.team))}</span><span></span></h4>` + subs.list.map(c => {
+      const p = byId.get(c.inId), marks = p ? playerMarks(p) : "", rt = p && showRating ? ownRating(p, ctx) : null;
+      return `<div class="sw"><span class="m">${esc(c.m)}</span><span><b>${esc(p?.jersey ? p.jersey + " " : "")}${esc(c.inName)}</b>${marks ? " " + marks : ""}<small>für ${esc(c.outName)}</small></span>${rt != null ? `<span class="rt ${ratingCls(rt)}">${fmtRating(rt)}</span>` : ""}</div>`;
+    }).join("");
+  };
+  const benchBlock = (r, subs) => {
+    const used = new Set(hide ? [] : subs.list.map(c => c.inId));
+    const un = r.roster.filter(p => !p.starter && !used.has(String(p.athlete?.id || "")));
+    return un.length ? `<h4><span>${!hide && subs.list.length ? "Nicht eingesetzt" : "Bank"} ${esc(deName(r.team))}</span><span></span></h4><div class="bench">${un.map(p => `<span><i>${esc(p.jersey || "")}</i>${esc(p.athlete?.displayName || "")}</span>`).join("")}</div>` : "";
+  };
+  return `<section class="comp lineup glu">${head(cH, h, colH)}
+    <div class="gpitch" style="height:${height}px"><div class="pline mid"></div><div class="pline circle"></div><div class="pline box top"></div><div class="pline box bot"></div>${place(rowsH, "h")}${place(rowsA, "a")}</div>
+    ${head(cA, a, colA)}
+    ${showRating ? `<p class="note gnote">Bewertung: eigene Berechnung aus Toren, Vorlagen, Schüssen aufs Tor, Paraden, Gegentoren, Karten, Fouls und Ergebnis. 6,0 ist durchschnittlich. Nicht vergleichbar mit Noten von Google, kicker oder SofaScore.</p>` : ""}
+    ${subBlock(h, subsH, "h")}${subBlock(a, subsA, "a")}${benchBlock(h, subsH)}${benchBlock(a, subsA)}</section>`;
+}
 function detailBody(s, ev) {
   const comp = s.header?.competitions?.[0] || ev?.competitions?.[0] || {};
   const st = statusInfo({ ...ev, competitions: [comp], date: comp.date || ev?.date });
@@ -1293,7 +1416,7 @@ function detailBody(s, ev) {
     if (!rs.some(r => r.roster?.length)) return `<div class="empty">Aufstellungen noch nicht veröffentlicht.<br>Meist etwa 1 Stunde vor Anpfiff.</div>`;
     const h = rs.find(r => r.homeAway === "home") || rs[0], a = rs.find(r => r.homeAway === "away") || rs[1];
     const hideEv = st.state !== "pre" && state.spoiler && !state.revealed.has(detail.id);
-    return lineupHTML(h, s, hideEv) + lineupHTML(a, s, hideEv);
+    return matchLineupHTML(s, hideEv);
   }
   if (detail.tab === "ticker") {
     const c = (s.commentary || []).slice().reverse();
