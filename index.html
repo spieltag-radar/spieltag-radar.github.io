@@ -1715,23 +1715,24 @@ async function renderPlayer() {
   }
   if (player.id !== id) return;
   if (d.name) box.querySelector(".thead").innerHTML = `<b>${esc(d.name)}</b>`;
-  const natRows = d.rows.filter(r => r.kind === "nat");
+  // Fuer die Kopfzeile zaehlt die A-Nationalmannschaft, Jugendteams (U21 usw.) stehen nur in der Tabelle
+  const natRows = d.rows.filter(r => r.kind === "nat" && !/\bU\d{2}\b/.test(r.team));
   const natTeam = natRows[0] ? deName({ id: natRows[0].tid, displayName: natRows[0].team }) : "";
   const NAT_DE = { Germany: "Deutschland", Spain: "Spanien", France: "Frankreich", Brazil: "Brasilien", Netherlands: "Niederlande", Italy: "Italien", Argentina: "Argentinien", Belgium: "Belgien", Austria: "Österreich", Switzerland: "Schweiz", Hungary: "Ungarn", Denmark: "Dänemark", Croatia: "Kroatien", Poland: "Polen", Turkey: "Türkei", "Türkiye": "Türkei", Norway: "Norwegen", Sweden: "Schweden", "United States": "USA", Japan: "Japan", "South Korea": "Südkorea", Morocco: "Marokko", Senegal: "Senegal", Nigeria: "Nigeria", Ghana: "Ghana", "Ivory Coast": "Elfenbeinküste", Cameroon: "Kamerun", Uruguay: "Uruguay", Colombia: "Kolumbien", Mexico: "Mexiko", Serbia: "Serbien", Ukraine: "Ukraine", Czechia: "Tschechien", "Czech Republic": "Tschechien", Slovakia: "Slowakei", Slovenia: "Slowenien", Scotland: "Schottland", Wales: "Wales", Ireland: "Irland", Greece: "Griechenland", Georgia: "Georgien", Albania: "Albanien", Kosovo: "Kosovo", Egypt: "Ägypten", Algeria: "Algerien", Tunisia: "Tunesien", Ecuador: "Ecuador", Canada: "Kanada", Australia: "Australien", Iceland: "Island", Finland: "Finnland", Romania: "Rumänien", Bulgaria: "Bulgarien", "Bosnia and Herzegovina": "Bosnien und Herzegowina", Portugal: "Portugal", England: "England" };
-  const meta = [d.pos, natTeam || NAT_DE[d.nat] || d.nat, d.age ? d.age + " Jahre" : ""].filter(Boolean).join(" · ");
+  const meta = [d.pos, natTeam || NAT_DE[String(d.nat).replace(/\s*U\d{2}$/, "")] || String(d.nat).replace(/\s*U\d{2}$/, ""), d.age ? d.age + " Jahre" : ""].filter(Boolean).join(" · ");
   const sum = rs => rs.reduce((a, r) => ({ sp: a.sp + r.sp, t: a.t + r.t, v: a.v + r.v }), { sp: 0, t: 0, v: 0 });
   const all = sum(d.rows.filter(r => r.kind !== "nat"));
   const block = (kind, title) => {
     const rs = d.rows.filter(r => r.kind === kind);
     if (!rs.length) return "";
     const s = sum(rs);
-    return `<section class="comp"><h2><span>${title}</span><span></span></h2><table class="car"><thead><tr><th>Saison</th><th>${kind === "nat" ? "Wettbewerb" : "Team und Wettbewerb"}</th><th>Sp</th><th>T</th><th>V</th></tr></thead><tbody>
-      ${rs.map(r => `<tr><td class="s">${esc(r.season)}</td><td class="c">${r.tlogo ? `<img loading="lazy" src="${esc(r.tlogo)}" alt="" onerror="this.style.display='none'">` : ""}${esc(kind === "nat" ? compDe(r.slug, r.comp) : deName({ id: r.tid, displayName: r.team }))}${kind === "nat" ? "" : `<small>${esc(compDe(r.slug, r.comp))}</small>`}</td><td class="n">${r.sp}</td><td class="n">${r.t}</td><td class="n">${r.v}</td></tr>`).join("")}
+    return `<section class="comp"><h2><span>${title}</span><span></span></h2><table class="car"><thead><tr><th>Saison</th><th>Team und Wettbewerb</th><th>Sp</th><th>T</th><th>V</th></tr></thead><tbody>
+      ${rs.map(r => `<tr><td class="s">${esc(r.season)}</td><td class="c">${r.tlogo ? `<img loading="lazy" src="${esc(r.tlogo)}" alt="" onerror="this.style.display='none'">` : ""}${esc(deName({ id: r.tid, displayName: r.team }))}<small>${esc(compDe(r.slug, r.comp))}</small></td><td class="n">${r.sp}</td><td class="n">${r.t}</td><td class="n">${r.v}</td></tr>`).join("")}
       <tr class="sum"><td class="s">Gesamt</td><td class="c"></td><td class="n">${s.sp}</td><td class="n">${s.t}</td><td class="n">${s.v}</td></tr></tbody></table></section>`;
   };
   box.querySelector(".dbody").innerHTML = (meta ? `<p class="pmeta">${esc(meta)}</p>` : "") +
     (d.rows.length ? `<div class="ptot"><div><b>${all.sp}</b><span>Spiele Verein</span></div><div><b>${all.t}</b><span>Tore</span></div><div><b>${all.v}</b><span>Vorlagen</span></div></div>` : `<div class="empty">Keine Karrieredaten gefunden.</div>`) +
-    block("league", "Liga") + block("intl", "International") + block("cup", "Pokale") + block("nat", "Nationalmannschaft" + (natTeam ? " " + natTeam : "")) +
+    block("league", "Liga") + block("intl", "International") + block("cup", "Pokale") + block("nat", "Nationalmannschaft") +
     `<p class="note">Sp = Spiele, T = Tore, V = Vorlagen. Saison 24/25 läuft von Sommer bis Sommer, Jahreszahlen ohne Schrägstrich sind Kalenderjahre. Freundschaftsspiele von Vereinen sind nicht enthalten, Länderspiele schon. Frühe Jahre in unteren Ligen können fehlen. Eine Durchschnittsbewertung liefert die Quelle nicht. Quelle: ESPN.</p>`;
 }
 $("#detail").addEventListener("click", e => {
