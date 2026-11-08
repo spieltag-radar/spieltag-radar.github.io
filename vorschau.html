@@ -174,7 +174,7 @@ body.noscroll{overflow:hidden}
 .gpitch{position:relative;background:#1d5c34;overflow:hidden}
 .gpitch .pline.box{left:25%;right:25%;height:70px}
 .gp{position:absolute;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;text-align:center}
-.gc{position:relative;width:44px;height:44px;flex:none;border-radius:50%!important;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;box-shadow:0 2px 5px rgba(0,0,0,.45)}
+.gc{position:relative;width:44px;height:44px;flex:none;border-radius:50%!important;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;background:#111;color:#fff;box-shadow:0 0 0 3px var(--ring,#cfcfcf),0 2px 5px rgba(0,0,0,.45)}
 .gc .b{position:absolute;width:18px;height:18px;display:flex;align-items:center;justify-content:center;line-height:1;border-radius:50%!important;box-shadow:0 1px 2px rgba(0,0,0,.5)}
 .gc .cd{top:-3px;right:-5px;width:12px;height:16px;border-radius:2px!important}
 .gc .cd.y{background:#facc15}.gc .cd.r{background:#ef4444}
@@ -182,7 +182,8 @@ body.noscroll{overflow:hidden}
 .gc .as{bottom:-3px;left:-6px;background:#111;color:#fff;font-weight:800;font-size:10px}
 .grt{height:20px;margin-top:3px;display:flex;align-items:center;justify-content:center}
 .rt{display:inline-block;font-size:13px;font-weight:700;padding:0 6px;line-height:18px;font-variant-numeric:tabular-nums}
-.rt.hi{background:#2e7d32;color:#fff}.rt.mid{background:#d4a72c;color:#111}.rt.lo{background:#c2410c;color:#fff}
+/* Variante Teamfarben-Ring: Noten neutral, nur ab 7,0 gruen hervorgehoben */
+.rt{background:rgba(0,0,0,.55);color:#fff}.rt.hi{background:#2e7d32;color:#fff}
 .gn{margin-top:2px;font-size:13px;letter-spacing:-.2px;font-weight:600;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;height:18px;line-height:18px}
 .gs{height:16px;line-height:16px;font-size:12px;font-weight:700;color:#ffb4ab;font-variant-numeric:tabular-nums}
 .gnote{padding:10px 2px 0}
@@ -1306,6 +1307,11 @@ function teamColor(t, fallback) {
   const c = (t?.color || "").replace("#", "");
   return /^[0-9a-f]{6}$/i.test(c) ? "#" + c : fallback;
 }
+// Ringfarbe fuer den Spielerkreis: Teamfarbe, bei sehr dunklen Teamfarben hellgrau, damit der Ring auf dem dunklen Kreis sichtbar bleibt
+function ringOf(hex) {
+  const n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  return (0.299 * r + 0.587 * g + 0.114 * b) < 40 ? "#cfcfcf" : hex;
+}
 function textOn(hex) {
   const n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
   return (0.299 * r + 0.587 * g + 0.114 * b) > 160 ? "#111" : "#fff";
@@ -1346,7 +1352,7 @@ function matchLineupHTML(s, hide) {
     // Feste Zeilen fuer alle Spieler: Kreis, Bewertung, Name, Wechselminute. Symbole nur als gleich grosse Plaketten an festen Ecken.
     const rt = showRating ? ownRating(p, ctx) : null;
     return `<div class="gp" style="top:${top}px;left:${p._x}%;width:${p._w}%">
-      <div class="gc" style="background:${col};color:${textOn(col)}">${esc(p.jersey || "")}
+      <div class="gc" style="--ring:${ringOf(col)}">${esc(p.jersey || "")}
         ${rc ? `<span class="b cd r"></span>` : yc ? `<span class="b cd y"></span>` : ""}
         ${g ? `<span class="b gl2">${g > 1 ? g : ""}⚽</span>` : ""}
         ${as ? `<span class="b as" title="Vorlage">A</span>` : ""}</div>
