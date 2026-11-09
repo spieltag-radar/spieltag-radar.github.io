@@ -97,6 +97,8 @@ footer{color:var(--muted);font-size:13px;text-align:center;padding:8px 14px 24px
 .car{width:100%;border-collapse:collapse;font-size:16px}.car th{color:var(--muted);font-weight:500;font-size:14px;text-align:right;padding:6px 4px}.car th:first-child,.car th:nth-child(2){text-align:left}
 .car td{padding:8px 4px;border-top:1px solid var(--line);text-align:right;vertical-align:middle}.car td.s{text-align:left;white-space:nowrap;color:var(--muted);font-variant-numeric:tabular-nums}.car td.c{text-align:left}
 .car td.c small{display:block;color:var(--muted);font-size:13px}.car td.c img{width:18px;height:18px;object-fit:contain;vertical-align:-3px;margin-right:6px}.car tr.sum td{font-weight:800;border-top:2px solid var(--line)}.car td.n{min-width:30px;font-variant-numeric:tabular-nums}
+.car.coll tr.det{display:none}.car.coll.open tr.det{display:table-row}
+.car tr.tog{cursor:pointer}.car tr.tog td{font-weight:600}.car .chev{display:inline-block;font-size:22px;line-height:1;transition:transform .2s}.car.open .chev{transform:rotate(90deg)}
 .thead{display:flex;align-items:center;gap:12px;padding:12px 0}.thead img{width:44px;height:44px;object-fit:contain}.thead b{font-size:22px}
 .tlogo{display:inline-flex;padding:8px;margin:-8px;cursor:pointer}
 [data-team]{cursor:pointer}
@@ -1670,6 +1672,8 @@ function closePlayer(fromHistory) {
 }
 $("#playerview").addEventListener("click", e => {
   if (e.target.closest("[data-showtable]")) { e.stopPropagation(); state.tablesRevealed = true; renderPlayer(); }
+  const tg = e.target.closest("[data-cartoggle]");
+  if (tg) { e.stopPropagation(); tg.closest("table").classList.toggle("open"); }
 });
 // Einzelne Objekte (Ligen, Saisons, Teams) aendern sich nicht und werden dauerhaft gemerkt
 async function coreObj(url) {
@@ -1811,13 +1815,16 @@ async function renderPlayer() {
   const meta = [esc(d.pos), natHTML, d.age ? esc(d.age + " Jahre") : ""].filter(Boolean).join(" · ");
   const sum = rs => rs.reduce((a, r) => ({ sp: a.sp + r.sp, t: a.t + r.t, v: a.v + (r.v || 0) }), { sp: 0, t: 0, v: 0 });
   const all = sum(d.rows.filter(r => r.kind === "league" || r.kind === "intl"));
-  const block = (kind, title) => {
+  // collapse: eine Summenzeile, die beim Antippen die Saisonzeilen aufklappt
+  const block = (kind, title, collapse = false) => {
     const rs = d.rows.filter(r => r.kind === kind);
     if (!rs.length) return "";
     const s = sum(rs);
-    return `<section class="comp"><h2><span>${title}</span><span></span></h2><table class="car"><thead><tr><th>Saison</th><th>Team und Wettbewerb</th><th>Sp</th><th>T</th><th>V</th></tr></thead><tbody>
-      ${rs.map(r => `<tr><td class="s">${esc(r.season)}</td><td class="c">${r.tlogo ? `<img loading="lazy" src="${esc(r.tlogo)}" alt="" onerror="this.style.display='none'">` : ""}${esc(deName({ id: r.tid, displayName: r.team }))}<small>${esc(compDe(r.slug, r.comp))}</small></td><td class="n">${r.sp}</td><td class="n">${r.t}</td><td class="n">${r.v == null ? "" : r.v}</td></tr>`).join("")}
-      <tr class="sum"><td class="s">Gesamt</td><td class="c"></td><td class="n">${s.sp}</td><td class="n">${s.t}</td><td class="n">${s.v}</td></tr></tbody></table></section>`;
+    const y1 = Math.min(...rs.map(r => r.y1 || 9999)), y2 = Math.max(...rs.map(r => r.y2 || 0));
+    const head = collapse ? `<tr class="tog" data-cartoggle="1"><td class="s"><span class="chev">›</span></td><td class="c">Alle Spiele<small>${esc(years(y1, y2))} · antippen für Details</small></td><td class="n">${s.sp}</td><td class="n">${s.t}</td><td class="n">${s.v}</td></tr>` : "";
+    return `<section class="comp"><h2><span>${title}</span><span></span></h2><table class="car${collapse ? " coll" : ""}"><thead><tr><th>Saison</th><th>Team und Wettbewerb</th><th>Sp</th><th>T</th><th>V</th></tr></thead><tbody>${head}
+      ${rs.map(r => `<tr class="det"><td class="s">${esc(r.season)}</td><td class="c">${r.tlogo ? `<img loading="lazy" src="${esc(r.tlogo)}" alt="" onerror="this.style.display='none'">` : ""}${esc(deName({ id: r.tid, displayName: r.team }))}<small>${esc(compDe(r.slug, r.comp))}</small></td><td class="n">${r.sp}</td><td class="n">${r.t}</td><td class="n">${r.v == null ? "" : r.v}</td></tr>`).join("")}
+      ${collapse ? "" : `<tr class="sum"><td class="s">Gesamt</td><td class="c"></td><td class="n">${s.sp}</td><td class="n">${s.t}</td><td class="n">${s.v}</td></tr>`}</tbody></table></section>`;
   };
   // Nationalmannschaft zusammengefasst: A-Team je Wettbewerbsart ueber alle Jahre, Jugendteams je Team
   const natCat = r => {
@@ -1858,7 +1865,7 @@ async function renderPlayer() {
   };
   box.querySelector(".dbody").innerHTML = (meta ? `<p class="pmeta">${meta}</p>` : "") +
     (d.rows.length ? `<div class="ptot"><div><b>${all.sp}</b><span>Spiele Verein</span></div><div><b>${all.t}</b><span>Tore</span></div><div><b>${all.v}</b><span>Vorlagen</span></div></div>` : `<div class="empty">Keine Karrieredaten gefunden.</div>`) +
-    block("league", "Liga") + block("intl", "International") + natBlock() +
+    block("league", "Liga") + block("intl", "International", true) + natBlock() +
     `<p class="note">Sp = Spiele, T = Tore, V = Vorlagen. Saison 24/25 läuft von Sommer bis Sommer, Jahreszahlen ohne Schrägstrich sind Kalenderjahre. Pokale und Freundschaftsspiele von Vereinen sind nicht enthalten. Bei der Nationalmannschaft zählt nur die A-Mannschaft, inklusive Testspielen. Stationen, die ESPN nicht kennt (etwa untere Ligen), stammen aus Wikipedia und enthalten nur Ligaspiele und Tore, keine Vorlagen. Eine Durchschnittsbewertung liefert die Quelle nicht. Quellen: ESPN und Wikipedia.</p>`;
 }
 $("#detail").addEventListener("click", e => {
