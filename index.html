@@ -317,6 +317,7 @@ nav button.active{opacity:1;color:#fff;font-weight:600}
 .ctile{border:0;color:#fff;font-family:inherit;font-size:18px;font-weight:400;padding:10px;cursor:pointer;line-height:1.2;height:96px;display:flex;align-items:center;justify-content:center;text-align:center}
 .ctile .clogo{display:block;width:72px;height:72px;object-fit:contain}
 .ctile .cname{display:none}
+.ctile .clogo.white{filter:brightness(0) invert(1)}
 .ctile.nologo .cname{display:block}
 /* Tabellen groesser */
 .tbl{font-size:18px}.tbl th{font-size:15px}.tbl th,.tbl td{padding:9px 3px}.tbl td.t{max-width:118px}.tbl td.t img{width:22px;height:22px}
@@ -838,6 +839,14 @@ async function videoDurations(ids) {
   }
   return cache;
 }
+// Bundesliga: Sportschau und ZDF stellen die Highlights meist erst spaet am Sonntagabend online (beobachtet an zwei Spieltagen, Nov. 2026).
+// Bis Montag 6 Uhr nach dem Spiel steht deshalb ein Hinweis statt "Kein Video gefunden".
+function blWait(ev, slug) {
+  if (slug !== "ger.1") return false;
+  const k = new Date(ev.date), mon = new Date(k);
+  mon.setDate(k.getDate() + ((8 - k.getDay()) % 7 || 7)); mon.setHours(6, 0, 0, 0);
+  return Date.now() < mon.getTime();
+}
 const fmtDur = s => s ? Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0") : "";
 async function fillVideos(root) {
   const nodes = [...root.querySelectorAll("[data-vids]")];
@@ -855,7 +864,7 @@ async function fillVideos(root) {
       const yt = `https://www.youtube.com/results?search_query=${q}`;
       n.innerHTML = n.closest(".tile")
         ? `<a class="vid yt" href="${yt}" target="_blank" rel="noopener">▶ YouTube-Suche</a>`
-        : `<span class="novid">${vids.error ? "Videosuche nicht erreichbar" : "Kein Video gefunden"} · <a href="${yt}" target="_blank" rel="noopener">YouTube-Suche</a>${state.spoiler ? " (Vorschaubilder können das Ergebnis verraten)" : ""}</span>`;
+        : `<span class="novid">${vids.error ? "Videosuche nicht erreichbar" : blWait(ev, m.dataset.slug) ? "Zusammenfassung meist ab Sonntagabend" : "Kein Video gefunden"} · <a href="${yt}" target="_blank" rel="noopener">YouTube-Suche</a>${state.spoiler ? " (Vorschaubilder können das Ergebnis verraten)" : ""}</span>`;
     }
   }));
 }
@@ -1081,7 +1090,7 @@ async function viewComps() {
   const logo = c => {
     const u = c.slug === "hun.1" ? "https://r2.thesportsdb.com/images/media/league/badge/7o3q3t1616017529.png/small" : LOGO_ID[c.slug] ? `https://a.espncdn.com/i/leaguelogos/soccer/500-dark/${LOGO_ID[c.slug]}.png` : "";
     // Faellt ein Logo aus, erscheint stattdessen der Name
-    return u ? `<img class="clogo" src="${u}" alt="${esc(c.name)}" loading="lazy" onerror="this.parentNode.classList.add('nologo');this.remove()">` : "";
+    return u ? `<img class="clogo${c.slug === "esp.1" ? " white" : ""}" src="${u}" alt="${esc(c.name)}" loading="lazy" onerror="this.parentNode.classList.add('nologo');this.remove()">` : "";
   };
   return groups.filter(g => g[1].length).map(([t, l]) => `<section class="comp"><h2><span>${t}</span><span></span></h2><div class="cgrid">${l.map(c => `<button class="ctile${logo(c) ? "" : " nologo"}" style="background:${COMP_COLOR[c.slug] || PAL[k++ % PAL.length]}" data-comp="${c.slug}" aria-label="${esc(c.name)}">${logo(c)}<span class="cname">${esc(c.name)}</span></button>`).join("")}</div></section>`).join("");
 }
@@ -1788,16 +1797,17 @@ async function renderPlayer() {
       return [...m.values()].sort((a, b) => b.sp - a.sp);
     };
     const senior = rs.filter(r => !isYouth(r)), youth = rs.filter(isYouth);
-    const table = (title, groups, withLogo) => {
+    const table = (title, groups, withLogo, withSum = true) => {
       if (!groups.length) return "";
       const s = sum(groups);
-      return `<section class="comp"><h2><span>${esc(title)}</span><span></span></h2><table class="car"><thead><tr><th>${withLogo ? "Team" : "Wettbewerb"}</th><th></th><th>Sp</th><th>T</th><th>V</th></tr></thead><tbody>
+      return `<section class="comp"><h2><span>${esc(title)}</span><span></span></h2><table class="car"><thead><tr><th>${withSum ? "Wettbewerb" : "A-Mannschaft"}</th><th></th><th>Sp</th><th>T</th><th>V</th></tr></thead><tbody>
         ${groups.map(g => `<tr><td class="c" colspan="2">${withLogo && g.logo ? `<img loading="lazy" src="${esc(g.logo)}" alt="" onerror="this.style.display='none'">` : ""}${esc(g.name)}<small>${esc(years(g.y1, g.y2))}</small></td><td class="n">${g.sp}</td><td class="n">${g.t}</td><td class="n">${g.v}</td></tr>`).join("")}
-        <tr class="sum"><td class="s">Gesamt</td><td class="c"></td><td class="n">${s.sp}</td><td class="n">${s.t}</td><td class="n">${s.v}</td></tr></tbody></table></section>`;
+        ${withSum ? `<tr class="sum"><td class="s">Gesamt</td><td class="c"></td><td class="n">${s.sp}</td><td class="n">${s.t}</td><td class="n">${s.v}</td></tr>` : ""}</tbody></table></section>`;
     };
     const seniorName = senior[0] ? deName({ id: senior[0].tid, displayName: senior[0].team }) : "";
     // Nur die A-Nationalmannschaft, Jugendteams (U21 usw.) werden nicht gezeigt
-    return table("Nationalmannschaft" + (seniorName ? " " + seniorName : ""), group(senior, natCat), false);
+    // Eine einzige Zeile: alle Laenderspiele der A-Mannschaft zusammengezaehlt
+    return table("Nationalmannschaft" + (seniorName ? " " + seniorName : ""), group(senior, () => "Alle Länderspiele"), true, false);
   };
   box.querySelector(".dbody").innerHTML = (meta ? `<p class="pmeta">${meta}</p>` : "") +
     (d.rows.length ? `<div class="ptot"><div><b>${all.sp}</b><span>Spiele Verein</span></div><div><b>${all.t}</b><span>Tore</span></div><div><b>${all.v}</b><span>Vorlagen</span></div></div>` : `<div class="empty">Keine Karrieredaten gefunden.</div>`) +
