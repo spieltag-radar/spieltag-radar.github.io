@@ -723,7 +723,7 @@ const ALIAS = {
   "Zalaegerszeg":["zte","zalaegerszeg"], "Győri ETO":["eto"], "Debrecen":["dvsc","debrecen"], "Budapest Honvéd":["honved","kispest"], "Kisvárda":["kisvarda"],
   "Paks":["paksi","paks"], "Ferencváros":["ferencvarosi","ferencvaros","ftc","fradi"], "Ferencvaros":["ferencvarosi","ferencvaros","ftc","fradi"], "Puskás Akadémia":["puskas"], "MTK Budapest":["mtk"], "Vasas":["vasas"], "Újpest":["ujpest"], "Nyíregyháza":["nyiregyhaza"], "Leeds United":["leeds"], "Aston Villa":["aston villa"], "Nottingham Forest":["nottingham","forest"]
 };
-const norm = s => String(s || "").toLowerCase().replace(/ß/g, "ss").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/ø/g, "o").replace(/[^a-z0-9]+/g, " ").trim();
+const norm = s => String(s || "").toLowerCase().replace(/ß/g, "ss").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ø/g, "o").replace(/[^a-z0-9]+/g, " ").trim();
 function teamKeys(t) {
   const keys = new Set(ALIAS[t.displayName] || []);
   for (const src of [t.displayName, t.shortDisplayName, t.location, DE_NAMES[t.displayName] || ""]) {
@@ -1706,7 +1706,7 @@ function seasonLabel(se) {
   return !b || a === b ? a : `${a.slice(2)}/${b.slice(2)}`;
 }
 async function careerData(id) {
-  const k = "sr_car4_" + id, hit = store.get(k, null);
+  const k = "sr_car5_" + id, hit = store.get(k, null);
   if (hit && Date.now() - hit.t < 6 * 3600000) return hit.v;
   const [log, ath] = await Promise.all([getJSON(`${CORE}athletes/${id}/statisticslog`, 6 * 3600000), getJSON(`${CORE}athletes/${id}`, 24 * 3600000).catch(() => ({}))]);
   const rows = await Promise.all((log.entries || []).map(async e => {
@@ -1736,9 +1736,56 @@ async function careerData(id) {
     const key = [r.kind, r.season, r.slug, r.tid].join("|"), m = merged.get(key);
     if (m) { m.sp += r.sp; m.t += r.t; m.v += r.v; if (r.sort > m.sort) m.sort = r.sort; m.y1 = Math.min(m.y1 || r.y1, r.y1 || m.y1); m.y2 = Math.max(m.y2, r.y2); } else merged.set(key, { ...r });
   }
-  v.rows = [...merged.values()].sort((a, b) => b.sort.localeCompare(a.sort) || b.sp - a.sp);
+  v.rows = [...merged.values()];
+  // Luecken bei ESPN (z. B. untere Ligen, zweite Mannschaften) mit Stationen aus Wikipedia fuellen
+  try { v.rows.push(...await wikiGaps(v.name, v.rows)); } catch {}
+  v.rows.sort((a, b) => b.sort.localeCompare(a.sort) || b.sp - a.sp);
   store.set(k, { t: Date.now(), v });
   return v;
+}
+/* Wikipedia (englisch): Infobox "Senior career" mit Vereinsstationen, Ligaspielen und Ligatoren.
+   Nur Stationen, die ESPN nicht abdeckt, werden uebernommen. Vorlagen kennt Wikipedia nicht. */
+const clubNorm = s => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+  .replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter(w => w && !/^(fc|cf|afc|sc|ac|as|ssc|rc|rcd|ca|cd|sd|ud|fk|sk|club|de|calcio|football|futbol|sv|vfl|vfb|tsg|bv|1)$/.test(w)).join(" ");
+const isReserve = s => /\b(b|ii|iii|u\d{2}|castilla|reserves?|youth|juvenil)\b/i.test(String(s || ""));
+const clubMatch = (a, b) => { const x = clubNorm(a), y = clubNorm(b); return !!x && !!y && (x.includes(y) || y.includes(x) || x.split(" ")[0] === y.split(" ")[0]); };
+function wikiClean(t) {
+  return String(t || "").replace(/<!--[\s\S]*?-->/g, "").replace(/<ref[\s\S]*?(<\/ref>|\/>)/g, "").replace(/\{\{[^{}]*\}\}/g, "")
+    .replace(/\[\[(?:[^|\]]*\|)?([^\]]*)\]\]/g, "$1").replace(/→/g, "").replace(/\(loan\)/gi, "").replace(/'{2,}/g, "").trim();
+}
+async function wikiGaps(name, espnRows) {
+  if (!name) return [];
+  const league = espnRows.filter(r => r.kind === "league");
+  const latest = [...league].sort((a, b) => b.sort.localeCompare(a.sort))[0];
+  const api = "https://en.wikipedia.org/w/api.php?format=json&origin=*&";
+  const sr = await getJSON(api + "action=query&list=search&srlimit=3&srsearch=" + encodeURIComponent(name + " footballer"), 7 * 86400000);
+  for (const hit of sr.query?.search || []) {
+    const p = await getJSON(api + "action=parse&prop=wikitext&section=0&page=" + encodeURIComponent(hit.title), 86400000).catch(() => null);
+    const w = p?.parse?.wikitext?.["*"] || "";
+    const f = n => { const m = w.match(new RegExp("\\|\\s*" + n + "\\s*=([^\\n]*)")); return m ? wikiClean(m[1]) : ""; };
+    const st = [];
+    for (let i = 1; i <= 40; i++) {
+      const yrs = f("years" + i), club = f("clubs" + i);
+      if (!yrs && !club) { if (i > 1) break; continue; }
+      const ym = yrs.match(/(\d{4})\s*[–-]?\s*(\d{4})?/);
+      if (!ym || !club) continue;
+      st.push({ a: +ym[1], b: ym[2] ? +ym[2] : (/[–-]\s*$/.test(yrs) ? new Date().getFullYear() + 1 : +ym[1]), club, sp: parseInt(f("caps" + i)) || 0, t: parseInt(f("goals" + i)) || 0 });
+    }
+    if (!st.length) continue;
+    // Richtiger Artikel? Die letzte Station muss zum aktuellen Verein laut ESPN passen
+    if (latest && !clubMatch(st[st.length - 1].club, latest.team)) continue;
+    return st.filter(s => {
+      if (!s.sp) return false;
+      const hi = Math.max(s.a, s.b - 1), lo = s.a === s.b ? s.a - 1 : s.a;
+      const overlap = league.filter(r => r.y1 >= lo && r.y1 <= hi);
+      if (!overlap.length) return true;
+      return isReserve(s.club) && !overlap.some(r => isReserve(r.team));
+    }).map(s => ({
+      kind: "league", wiki: true, season: s.b - s.a === 1 ? `${String(s.a).slice(2)}/${String(s.b).slice(2)}` : s.a === s.b ? String(s.a) : `${String(s.a).slice(2)} bis ${String(s.b).slice(2)}`,
+      sort: `${s.a}-07-01`, y1: s.a, y2: s.b, comp: "Ligaspiele laut Wikipedia", slug: "", team: s.club, tid: "", tlogo: "", sp: s.sp, t: s.t, v: null
+    }));
+  }
+  return [];
 }
 async function renderPlayer() {
   const box = $("#playerview"), id = player.id;
@@ -1762,14 +1809,14 @@ async function renderPlayer() {
   const natName = natTeam || NAT_DE[String(d.nat).replace(/\s*U\d{2}$/, "")] || String(d.nat).replace(/\s*U\d{2}$/, "");
   const natHTML = natName ? `<span class="pnat">${d.flag ? `<img src="${esc(d.flag)}" alt="" onerror="this.remove()">` : ""}${esc(natName)}</span>` : "";
   const meta = [esc(d.pos), natHTML, d.age ? esc(d.age + " Jahre") : ""].filter(Boolean).join(" · ");
-  const sum = rs => rs.reduce((a, r) => ({ sp: a.sp + r.sp, t: a.t + r.t, v: a.v + r.v }), { sp: 0, t: 0, v: 0 });
+  const sum = rs => rs.reduce((a, r) => ({ sp: a.sp + r.sp, t: a.t + r.t, v: a.v + (r.v || 0) }), { sp: 0, t: 0, v: 0 });
   const all = sum(d.rows.filter(r => r.kind === "league" || r.kind === "intl"));
   const block = (kind, title) => {
     const rs = d.rows.filter(r => r.kind === kind);
     if (!rs.length) return "";
     const s = sum(rs);
     return `<section class="comp"><h2><span>${title}</span><span></span></h2><table class="car"><thead><tr><th>Saison</th><th>Team und Wettbewerb</th><th>Sp</th><th>T</th><th>V</th></tr></thead><tbody>
-      ${rs.map(r => `<tr><td class="s">${esc(r.season)}</td><td class="c">${r.tlogo ? `<img loading="lazy" src="${esc(r.tlogo)}" alt="" onerror="this.style.display='none'">` : ""}${esc(deName({ id: r.tid, displayName: r.team }))}<small>${esc(compDe(r.slug, r.comp))}</small></td><td class="n">${r.sp}</td><td class="n">${r.t}</td><td class="n">${r.v}</td></tr>`).join("")}
+      ${rs.map(r => `<tr><td class="s">${esc(r.season)}</td><td class="c">${r.tlogo ? `<img loading="lazy" src="${esc(r.tlogo)}" alt="" onerror="this.style.display='none'">` : ""}${esc(deName({ id: r.tid, displayName: r.team }))}<small>${esc(compDe(r.slug, r.comp))}</small></td><td class="n">${r.sp}</td><td class="n">${r.t}</td><td class="n">${r.v == null ? "" : r.v}</td></tr>`).join("")}
       <tr class="sum"><td class="s">Gesamt</td><td class="c"></td><td class="n">${s.sp}</td><td class="n">${s.t}</td><td class="n">${s.v}</td></tr></tbody></table></section>`;
   };
   // Nationalmannschaft zusammengefasst: A-Team je Wettbewerbsart ueber alle Jahre, Jugendteams je Team
@@ -1812,7 +1859,7 @@ async function renderPlayer() {
   box.querySelector(".dbody").innerHTML = (meta ? `<p class="pmeta">${meta}</p>` : "") +
     (d.rows.length ? `<div class="ptot"><div><b>${all.sp}</b><span>Spiele Verein</span></div><div><b>${all.t}</b><span>Tore</span></div><div><b>${all.v}</b><span>Vorlagen</span></div></div>` : `<div class="empty">Keine Karrieredaten gefunden.</div>`) +
     block("league", "Liga") + block("intl", "International") + natBlock() +
-    `<p class="note">Sp = Spiele, T = Tore, V = Vorlagen. Saison 24/25 läuft von Sommer bis Sommer, Jahreszahlen ohne Schrägstrich sind Kalenderjahre. Pokale und Freundschaftsspiele von Vereinen sind nicht enthalten. Bei der Nationalmannschaft zählt nur die A-Mannschaft, inklusive Testspielen. Frühe Jahre in unteren Ligen können fehlen. Eine Durchschnittsbewertung liefert die Quelle nicht. Quelle: ESPN.</p>`;
+    `<p class="note">Sp = Spiele, T = Tore, V = Vorlagen. Saison 24/25 läuft von Sommer bis Sommer, Jahreszahlen ohne Schrägstrich sind Kalenderjahre. Pokale und Freundschaftsspiele von Vereinen sind nicht enthalten. Bei der Nationalmannschaft zählt nur die A-Mannschaft, inklusive Testspielen. Stationen, die ESPN nicht kennt (etwa untere Ligen), stammen aus Wikipedia und enthalten nur Ligaspiele und Tore, keine Vorlagen. Eine Durchschnittsbewertung liefert die Quelle nicht. Quellen: ESPN und Wikipedia.</p>`;
 }
 $("#detail").addEventListener("click", e => {
   if (e.target.closest("[data-close]")) { closeDetail(false); return; }
