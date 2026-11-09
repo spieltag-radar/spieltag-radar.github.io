@@ -539,7 +539,7 @@ $("#home").addEventListener("click", () => goView("teams"));
 // Wischen: auf Unterseiten fuehrt rechts zurueck und links zum naechsten Reiter, auf den Hauptseiten wechseln die Reiter oben (wie bei Windows Phone).
 // Die Seite folgt dabei dem Finger und gleitet dann weiter oder federt zurueck.
 (() => {
-  const DT = ["stats", "lineups", "events", "ticker"];
+  const DT = () => Array.from(document.querySelectorAll("#detail .dtabs button"), b => b.dataset.dtab);
   let sx = 0, sy = 0, st = 0, ok = false, horiz = null, el = null, sc = null;
   // Als Homescreen App gibt es keine Zurueck-Geste des Systems, darum zaehlt dort auch ein Wisch vom Bildschirmrand
   const standalone = navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
@@ -584,8 +584,8 @@ $("#home").addEventListener("click", () => goView("teams"));
     };
     if ($("#detail").classList.contains("open") && el === $("#detail .dbody")) {
       if (edge) { slideOut($("#detail"), () => closeDetail(false)); return; }
-      const n = DT.indexOf(detail.tab) + dir;
-      if (n >= 0 && n < DT.length) { detail.tab = DT[n]; renderDetail(); $("#detail").scrollTop = 0; slideIn(el, dir); } else reset();
+      const tabs = DT(), n = tabs.indexOf(detail.tab) + dir;
+      if (n >= 0 && n < tabs.length) { detail.tab = tabs[n]; renderDetail(); $("#detail").scrollTop = 0; slideIn(el, dir); } else reset();
       return;
     }
     if ($("#playerview").classList.contains("open") && el === $("#playerview")) {
@@ -1541,8 +1541,25 @@ async function renderDetail(force) {
       <div class="st${st.live ? " live" : ""}">${esc(st.state === "pre" ? berlin(evLike.date, { weekday:"long", day:"2-digit", month:"2-digit" }) + ", " + st.label + " Uhr" : st.label)}</div></div>
     <div data-team="${esc(away.team.id)}">${tlogo(away.team)}<div class="tn">${esc(deName(away.team))}</div>${scorers(away.team.id)}</div>`;
   box.querySelectorAll(".dtabs button").forEach(b => b.classList.toggle("active", b.dataset.dtab === detail.tab));
+  // Wie beim Pivot: der aktive Reiter rueckt nach links, damit auch der letzte sichtbar wird
+  { const bar = box.querySelector(".dtabs"), act = bar?.querySelector("button.active"); if (bar && act) bar.scrollTo({ left: Math.max(0, bar.scrollLeft + act.getBoundingClientRect().left - bar.getBoundingClientRect().left), behavior: "smooth" }); }
   const body = box.querySelector(".dbody");
-  if (hide && detail.tab !== "lineups") {
+  if (detail.tab === "table") {
+    // Tabelle des Wettbewerbs, beide Teams des Spiels hervorgehoben; bei Gruppen nur die Gruppe der beiden Teams
+    const ids = [String(home.team.id), String(away.team.id)];
+    if (!body.querySelector(".tbl")) body.innerHTML = `<div class="load">Lade Tabelle …</div>`;
+    let html;
+    try { html = await statsHTML(detail.slug, "table"); } catch { html = `<div class="empty">Tabelle gerade nicht erreichbar.</div>`; }
+    if (detail.tab !== "table" || !box.classList.contains("open")) return;
+    const tmp = document.createElement("div"); tmp.innerHTML = html;
+    const secs = [...tmp.querySelectorAll("section.comp")];
+    const mine = secs.filter(x => ids.some(i => x.querySelector(`tr[data-team="${i}"]`)));
+    if (mine.length && mine.length < secs.length) secs.forEach(x => { if (!mine.includes(x)) x.remove(); });
+    tmp.querySelectorAll("tr[data-team]").forEach(r => r.classList.toggle("fav", ids.includes(r.dataset.team)));
+    const y = box.scrollTop;
+    body.innerHTML = tmp.innerHTML;
+    if (!force) box.scrollTop = y;
+  } else if (hide && detail.tab !== "lineups") {
     body.innerHTML = `<div class="empty">Spoiler-Schutz ist an. Ereignisse, Statistik und Ticker verraten das Ergebnis.<br><br><button class="reveal" data-reveal="${esc(detail.id)}">Trotzdem anzeigen</button><br><br>Die Aufstellungen kannst du ohne Spoiler ansehen.</div>`;
   } else {
     const y = box.scrollTop;
@@ -1559,7 +1576,7 @@ function openDetail(id, slug) {
   const c = COMP_BY[slug];
   box.innerHTML = `<div class="dhead"><div class="dtop"><button class="back" data-close="1">‹ Zurück</button><span class="dcomp">${esc(c ? c.name : "")}</span></div>
     <div class="board"></div>
-    <div class="dtabs"><button data-dtab="stats">Statistik</button><button data-dtab="lineups">Aufstellung</button><button data-dtab="events">Ereignisse</button><button data-dtab="ticker">Ticker</button></div></div>
+    <div class="dtabs"><button data-dtab="stats">Statistik</button><button data-dtab="lineups">Aufstellung</button><button data-dtab="events">Ereignisse</button><button data-dtab="ticker">Ticker</button>${c?.table && !c.tsdb ? `<button data-dtab="table">Tabelle</button>` : ""}</div></div>
     <div class="dbody"><div class="load">Lade Spieldaten …</div></div>`;
   box.classList.add("open"); document.body.classList.add("noscroll"); box.scrollTop = 0; box.style.zIndex = ++zTop;
   try { history.pushState({ detail: id }, ""); } catch {}
@@ -1873,7 +1890,8 @@ $("#detail").addEventListener("click", e => {
   const t = e.target.closest("[data-dtab]");
   if (t) { detail.tab = t.dataset.dtab; renderDetail(); $("#detail").scrollTop = 0; return; }
   const r = e.target.closest("[data-reveal]");
-  if (r) { e.stopPropagation(); state.revealed.add(r.dataset.reveal); renderDetail(); }
+  if (r) { e.stopPropagation(); state.revealed.add(r.dataset.reveal); renderDetail(); return; }
+  if (e.target.closest("[data-showtable]")) { e.stopPropagation(); state.tablesRevealed = true; renderDetail(); }
 });
 
 /* ================= Rendern & Aktualisieren ================= */
