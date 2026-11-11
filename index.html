@@ -249,6 +249,17 @@ th,td,.lead,.stat,.pl,.tick,.ev,.crow{border-color:var(--line)}
 .srow .pi{background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px}
 .srow>span{display:flex;flex-direction:column;font-size:18px;min-width:0}
 .srow small{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nitem{display:block;padding:9px 0;color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
+.nitem b{display:block;font-size:17px;font-weight:600;line-height:1.3}
+.nitem span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:var(--muted);font-size:14px;margin-top:3px;line-height:1.35}
+.nitem small{display:block;color:var(--accent);font-size:13px;margin-top:3px}
+.sqh{color:var(--accent);font-size:14px;margin:10px 0 2px;text-transform:lowercase}
+.sq{display:flex;align-items:center;gap:10px;padding:6px 0;cursor:pointer}
+.sq .no{width:24px;text-align:right;color:var(--muted);font-size:15px;flex:none}
+.sq img{width:20px;height:14px;object-fit:cover;flex:none}
+.sq .nm{flex:1;font-size:17px;min-width:0}
+.sq .ag{color:var(--muted);font-size:14px}
+.sq .inj{color:#e81123;font-size:13px;margin-left:8px}
 .dhead{background:var(--bg);border:0;padding:calc(env(safe-area-inset-top) + 12px) 16px 0}
 .dtabs{overflow-x:auto;scrollbar-width:none;gap:0}
 .dtabs button{flex:none;font-size:26px;font-weight:300;color:#4a4a4a;padding:4px 16px 6px 0;border:0}
@@ -704,6 +715,7 @@ document.addEventListener("click", e => {
   if (e.target.closest("[data-closeplayer]")) { closePlayer(false); return; }
   if (e.target.closest("[data-closeteam]")) { closeTeam(false); return; }
   if (e.target.closest("[data-closesearch]")) { closeSearch(false); return; }
+  if (e.target.closest("[data-shownews]")) { state.newsRevealed = true; renderTeam(); return; }
   const open = e.target.closest(".match");
   if (open && !e.target.closest("a,button") && !open.closest("#detail") && !open.classList.contains("nodetail")) { openDetail(open.dataset.ev, open.dataset.slug); return; }
   const r = e.target.closest("[data-reveal]");
@@ -1648,11 +1660,66 @@ async function renderTeam() {
   const next = ok(fix).filter(e => statusInfo(e).state !== "post").sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 3);
   [...past, ...next].forEach(e => evIndex.set(e.id, e));
   const y = box.scrollTop;
-  box.querySelector(".dbody").innerHTML = (res.status !== "fulfilled" ? `<div class="err">Ergebnisse konnten nicht geladen werden.</div>` : "") +
+  box.querySelector(".dbody").innerHTML = `<div class="tnews"></div>` + (res.status !== "fulfilled" ? `<div class="err">Ergebnisse konnten nicht geladen werden.</div>` : "") +
     `<section class="comp"><h2><span>Letzte Spiele</span><span></span></h2>${past.map(e => matchHTML(e, e.league?.slug, { withDate: true })).join("") || `<div class="empty">Keine Spiele gefunden.</div>`}</section>` +
-    `<section class="comp"><h2><span>Nächste Spiele</span><span></span></h2>${next.map(e => matchHTML(e, e.league?.slug, { withDate: true })).join("") || `<div class="empty">Keine Termine.</div>`}</section>`;
+    `<section class="comp"><h2><span>Nächste Spiele</span><span></span></h2>${next.map(e => matchHTML(e, e.league?.slug, { withDate: true })).join("") || `<div class="empty">Keine Termine.</div>`}</section>` +
+    `<div class="tsquad"><div class="load">Lade Kader …</div></div>`;
   box.scrollTop = y;
   fillVideos(box);
+  // Ligen des Teams, haeufigste zuerst (fuer Kader und ESPN-News braucht ESPN eine Liga)
+  const cnt = {};
+  for (const e of [...ok(res), ...ok(fix)]) { const sl = e.league?.slug; if (sl && sl !== "club.friendly") cnt[sl] = (cnt[sl] || 0) + (COMP_BY[sl] && !COMP_BY[sl].intl && !/cup|pokal|uefa\./.test(sl) ? 10 : 1); }
+  const leagues = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a]).slice(0, 3);
+  teamNews(box, id, leagues);
+  teamSquad(box, id, leagues);
+}
+// kicker hat deutsche Team-Feeds nur fuer deutsche Vereine (Namen am 11.11.2026 einzeln geprueft), sonst ESPN-News auf Englisch
+const KICKER = { "124": "borussia-dortmund", "132": "fc-bayern-muenchen", "11420": "rb-leipzig", "122": "1-fc-koeln", "125": "eintracht-frankfurt", "126": "sc-freiburg", "127": "hamburger-sv", "131": "bayer-04-leverkusen", "133": "fc-schalke-04", "134": "vfb-stuttgart", "137": "werder-bremen", "268": "bor-moenchengladbach", "2950": "1-fsv-mainz-05", "3307": "sc-paderborn-07", "3841": "fc-augsburg", "598": "1-fc-union-berlin", "7911": "tsg-hoffenheim", "10388": "sv-elversberg", "138": "vfl-wolfsburg", "6418": "1-fc-heidenheim", "270": "fc-st-pauli", "121": "vfl-bochum", "7884": "holstein-kiel", "129": "hertha-bsc", "3812": "sv-darmstadt-98" };
+async function teamNews(box, id, leagues) {
+  const el = box.querySelector(".tnews");
+  if (!el) return;
+  if (state.spoiler && !state.newsRevealed) { el.innerHTML = `<section class="comp"><h2><span>News</span><span></span></h2><div class="empty">Schlagzeilen können Ergebnisse verraten.<br><br><button class="reveal" data-shownews="1">News zeigen</button></div></section>`; return; }
+  let items = [], src = "";
+  try {
+    if (id === "481") {
+      const x = await fetch("https://newsfeed.kicker.de/news/nationalelf").then(r => r.ok ? r.text() : Promise.reject());
+      items = rssItems(x); src = "kicker";
+    } else if (KICKER[id]) {
+      const x = await fetch(`https://newsfeed.kicker.de/team/${KICKER[id]}`).then(r => r.ok ? r.text() : Promise.reject());
+      items = rssItems(x); src = "kicker";
+    }
+  } catch {}
+  if (!items.length) {
+    for (const lg of leagues) {
+      try {
+        const j = await getJSON(`${ESPN}${lg}/news?team=${id}&limit=3`, 30 * 60000);
+        items = (j.articles || []).map(a => ({ t: a.headline, d: a.description, at: a.published, u: a.links?.web?.href }));
+        if (items.length) { src = "ESPN, auf Englisch"; break; }
+      } catch {}
+    }
+  }
+  if (team.id !== id) return;
+  items = items.filter(i => i.t && i.u).slice(0, 3);
+  el.innerHTML = items.length ? `<section class="comp"><h2><span>News</span><span></span></h2>${items.map(i => `<a class="nitem" href="${esc(i.u)}" target="_blank" rel="noopener"><b>${esc(i.t)}</b>${i.d ? `<span>${esc(i.d)}</span>` : ""}<small>${esc(i.at ? berlin(i.at, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) + " Uhr" : "")}</small></a>`).join("")}<p class="note">Neueste Meldungen, Quelle: ${esc(src)}</p></section>` : "";
+}
+function rssItems(xml) {
+  const d = new DOMParser().parseFromString(xml, "text/xml");
+  return [...d.querySelectorAll("item")].map(it => ({ t: it.querySelector("title")?.textContent, d: it.querySelector("description")?.textContent, at: it.querySelector("pubDate")?.textContent, u: it.querySelector("link")?.textContent }));
+}
+async function teamSquad(box, id, leagues) {
+  const el = box.querySelector(".tsquad");
+  if (!el) return;
+  let list = [];
+  for (const lg of leagues) {
+    try { const j = await getJSON(`${ESPN}${lg}/teams/${id}/roster`, 6 * 3600000); list = j.athletes || []; if (list.length) break; } catch {}
+  }
+  if (team.id !== id) return;
+  if (!list.length) { el.innerHTML = `<section class="comp"><h2><span>Kader</span><span></span></h2><div class="empty">Kein Kader verfügbar.</div></section>`; return; }
+  const G = [["G", "Tor"], ["D", "Abwehr"], ["M", "Mittelfeld"], ["F", "Sturm"]];
+  const grp = k => list.filter(a => (a.position?.abbreviation || "").charAt(0) === k).sort((a, b) => (+a.jersey || 99) - (+b.jersey || 99));
+  const rest = list.filter(a => !G.some(([k]) => (a.position?.abbreviation || "").charAt(0) === k));
+  const row = a => `<div class="sq" data-player="${esc(a.id)}" data-pname="${esc(a.displayName || "")}"><span class="no">${esc(a.jersey || "")}</span>${a.flag?.href ? `<img loading="lazy" src="${esc(a.flag.href)}" alt="">` : `<span style="width:20px"></span>`}<span class="nm">${esc(a.displayName || "")}${a.injuries?.length ? `<span class="inj">verletzt</span>` : ""}</span><span class="ag">${a.age ? esc(a.age) + " J." : ""}</span></div>`;
+  el.innerHTML = `<section class="comp"><h2><span>Kader</span><span>${list.length} Spieler</span></h2>${[...G.map(([k, n]) => [n, grp(k)]), ["Weitere", rest]].filter(([, l]) => l.length).map(([n, l]) => `<div class="sqh">${n}</div>${l.map(row).join("")}`).join("")}</section>`;
 }
 // Teamseite fuer NB-I-Vereine aus den Spieltagsdaten von TheSportsDB
 async function renderTsdbTeam(box, id) {
