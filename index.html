@@ -89,8 +89,8 @@ footer{color:var(--muted);font-size:13px;text-align:center;padding:8px 14px 24px
 .match .more{float:right;color:var(--muted);font-size:14px}
 #detail{position:fixed;inset:0;z-index:20;background:var(--bg);overflow-y:auto;display:none;-webkit-overflow-scrolling:touch}
 #detail.open{display:block}
-#teamview,#playerview{position:fixed;inset:0;z-index:20;background:var(--bg);overflow-y:auto;display:none;-webkit-overflow-scrolling:touch}
-#teamview.open,#playerview.open{display:block}
+#teamview,#playerview,#searchview{position:fixed;inset:0;z-index:20;background:var(--bg);overflow-y:auto;display:none;-webkit-overflow-scrolling:touch}
+#teamview.open,#playerview.open,#searchview.open{display:block}
 [data-player]{cursor:pointer}
 .pmeta{color:var(--muted);font-size:15px;margin:-6px 0 12px}.pnat{white-space:nowrap}.pnat img{width:22px;height:15px;object-fit:cover;border-radius:2px;vertical-align:-2px;margin-right:6px}
 .ptot{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 14px}.ptot div{background:var(--card);border-radius:10px;padding:10px;text-align:center}.ptot b{display:block;font-size:24px}.ptot span{color:var(--muted);font-size:14px}
@@ -239,7 +239,16 @@ th,td,.lead,.stat,.pl,.tick,.ev,.crow{border-color:var(--line)}
 .lineup h4{background:none;font-size:20px;font-weight:300;color:var(--accent);border:0;padding:12px 0 4px}
 .crow{font-size:22px;font-weight:300;padding:12px 0;border:0;color:var(--text)}
 .ctop b{font-size:28px;font-weight:300}
-#detail,#teamview,#playerview{background:var(--bg);overflow-x:hidden}
+#detail,#teamview,#playerview,#searchview{background:var(--bg);overflow-x:hidden}
+.tact{display:flex;align-items:center;gap:18px}
+.sbtn{background:none;border:0;padding:2px;color:var(--accent);line-height:0;cursor:pointer}
+.sfield{padding:4px 0 12px}
+.sfield input{width:100%;box-sizing:border-box;background:#fff;color:#000;border:2px solid var(--accent);border-radius:0;font-size:18px;padding:8px 10px;font-family:inherit;-webkit-appearance:none;appearance:none;outline:none}
+.srow{display:flex;align-items:center;gap:12px;padding:9px 0;cursor:pointer}
+.srow img,.srow .pi{width:30px;height:30px;object-fit:contain;flex:none}
+.srow .pi{background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px}
+.srow>span{display:flex;flex-direction:column;font-size:18px;min-width:0}
+.srow small{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dhead{background:var(--bg);border:0;padding:calc(env(safe-area-inset-top) + 12px) 16px 0}
 .dtabs{overflow-x:auto;scrollbar-width:none;gap:0}
 .dtabs button{flex:none;font-size:26px;font-weight:300;color:#4a4a4a;padding:4px 16px 6px 0;border:0}
@@ -330,7 +339,8 @@ nav button.active{opacity:1;color:#fff;font-weight:600}
 <header>
   <div class="top">
     <h1 id="home" role="button" style="cursor:pointer">Spieltag-<span>Radar</span></h1>
-    <button id="spoilerBtn" class="spoiler" aria-pressed="false"><span class="dot"></span><span id="spoilerTxt">Spoiler-Schutz aus</span></button>
+    <div class="tact"><button id="searchBtn" class="sbtn" aria-label="Suche"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="M15 15l6 6" stroke-linecap="square"/></svg></button>
+    <button id="spoilerBtn" class="spoiler" aria-pressed="false"><span class="dot"></span><span id="spoilerTxt">Spoiler-Schutz aus</span></button></div>
   </div>
   <nav>
     <button data-view="teams" class="active">Start</button>
@@ -343,6 +353,7 @@ nav button.active{opacity:1;color:#fff;font-weight:600}
 <div id="detail" role="dialog" aria-modal="true"></div>
 <div id="teamview" role="dialog" aria-modal="true"></div>
 <div id="playerview" role="dialog" aria-modal="true"></div>
+<div id="searchview" role="dialog" aria-modal="true"></div>
 <footer>Ergebnisse: ESPN (inoffizielle Schnittstelle) · Videos: offizielle YouTube-Kanäle</footer>
 
 <script>
@@ -525,6 +536,7 @@ function goView(v) {
   const dir = Math.sign(VIEW_ORDER.indexOf(v) - VIEW_ORDER.indexOf(state.view));
   const overlay = !!topOverlay();
   if ($("#playerview").classList.contains("open")) closePlayer(false);
+  if ($("#searchview").classList.contains("open")) closeSearch(false);
   if ($("#detail").classList.contains("open")) closeDetail(false);
   if ($("#teamview").classList.contains("open")) closeTeam(false);
   if (!overlay) compPop(); else compPushed = false;
@@ -590,6 +602,10 @@ $("#home").addEventListener("click", () => goView("teams"));
     }
     if ($("#playerview").classList.contains("open") && el === $("#playerview")) {
       if (edge) slideOut(el, () => closePlayer(false)); else reset();
+      return;
+    }
+    if ($("#searchview").classList.contains("open") && el === $("#searchview")) {
+      if (edge) slideOut(el, () => closeSearch(false)); else reset();
       return;
     }
     if ($("#teamview").classList.contains("open") && el === $("#teamview")) {
@@ -687,6 +703,7 @@ document.addEventListener("click", e => {
   if (pl) { e.preventDefault(); openPlayer(pl.dataset.player, pl.dataset.pname || ""); return; }
   if (e.target.closest("[data-closeplayer]")) { closePlayer(false); return; }
   if (e.target.closest("[data-closeteam]")) { closeTeam(false); return; }
+  if (e.target.closest("[data-closesearch]")) { closeSearch(false); return; }
   const open = e.target.closest(".match");
   if (open && !e.target.closest("a,button") && !open.closest("#detail") && !open.classList.contains("nodetail")) { openDetail(open.dataset.ev, open.dataset.slug); return; }
   const r = e.target.closest("[data-reveal]");
@@ -1592,13 +1609,13 @@ function closeDetail(fromHistory) {
 }
 // Zurueck-Taste schliesst immer die oberste Ansicht (Spiel, Team oder Spieler)
 function topOverlay() {
-  return ["#detail", "#teamview", "#playerview"].map(q => $(q)).filter(b => b && b.classList.contains("open")).sort((a, b) => (+b.style.zIndex || 0) - (+a.style.zIndex || 0))[0] || null;
+  return ["#detail", "#teamview", "#playerview", "#searchview"].map(q => $(q)).filter(b => b && b.classList.contains("open")).sort((a, b) => (+b.style.zIndex || 0) - (+a.style.zIndex || 0))[0] || null;
 }
 let ignorePop = 0;
 window.addEventListener("popstate", () => {
   if (ignorePop > 0) { ignorePop--; return; }
   const o = topOverlay();
-  if (o && o.id === "detail") closeDetail(true); else if (o && o.id === "teamview") closeTeam(true); else if (o) closePlayer(true);
+  if (o && o.id === "detail") closeDetail(true); else if (o && o.id === "teamview") closeTeam(true); else if (o && o.id === "searchview") closeSearch(true); else if (o) closePlayer(true);
   else if (state.view === "comps" && state.compSel) compBack(true);
 });
 
@@ -1666,6 +1683,89 @@ function closeTeam(fromHistory) {
   if (!topOverlay()) document.body.classList.remove("noscroll");
   if (!fromHistory) { ignorePop++; try { history.back(); } catch { ignorePop--; } }
 }
+/* ================= Suche nach Mannschaften und Spielern ================= */
+// Erst sofort die Teams aus den Tabellen der App (deutsche Namen), dann nach kurzer Pause die Treffer der ESPN-Suche (nur Fussball)
+const search = { q: "", t: null, idx: null, idxP: null };
+function teamIndex() {
+  if (search.idxP) return search.idxP;
+  search.idxP = Promise.allSettled(COMPS.filter(c => c.table && !c.tsdb).map(c => getJSON(`${ESPN2}${c.slug}/standings`, 6 * 3600000).then(j => ({ c, j })))).then(list => {
+    const m = new Map();
+    for (const x of list) {
+      if (x.status !== "fulfilled") continue;
+      const { c, j } = x.value;
+      for (const g of (j.children?.length ? j.children : [j])) for (const e of g.standings?.entries || []) {
+        const t = e.team; if (!t?.id || m.has(String(t.id))) continue;
+        m.set(String(t.id), { id: String(t.id), name: deName(t), logo: t.logos?.[0]?.href || "", sub: c.name, k: norm([deName(t), t.displayName, t.shortDisplayName, t.abbreviation].join(" ")) });
+      }
+    }
+    return search.idx = [...m.values()];
+  });
+  return search.idxP;
+}
+async function espnSearch(q) {
+  const j = await getJSON(`https://site.web.api.espn.com/apis/search/v2?query=${encodeURIComponent(q)}&limit=25`, 10 * 60000);
+  const out = { team: [], player: [] };
+  for (const r of j.results || []) {
+    if (r.type !== "team" && r.type !== "player") continue;
+    for (const c of r.contents || []) {
+      const m = /~(t|a):(\d+)$/.exec(c.uid || "");
+      if (c.sport !== "soccer" || !m) continue;
+      out[r.type].push({ id: m[2], name: r.type === "team" ? deName({ displayName: c.displayName }) + (/women|frauen/i.test(c.subtitle || "") ? " Frauen" : "") : c.displayName, sub: r.type === "team" ? compDe(c.defaultLeagueSlug, c.subtitle || "").replace(/^German Cup$/, "DFB Pokal") : (c.subtitle || c.description || ""), logo: c.image?.default || "" });
+    }
+  }
+  return out;
+}
+const sRow = (t, kind) => kind === "team"
+  ? `<div class="srow" data-team="${esc(t.id)}"><img loading="lazy" src="${esc(t.logo || `https://a.espncdn.com/i/teamlogos/soccer/500/${t.id}.png`)}" alt="" onerror="this.style.visibility='hidden'"><span>${esc(t.name)}<small>${esc(t.sub)}</small></span></div>`
+  : `<div class="srow" data-player="${esc(t.id)}" data-pname="${esc(t.name)}"><span class="pi">${esc(t.name.split(" ").map(w => w[0] || "").slice(0, 2).join("").toUpperCase())}</span><span>${esc(t.name)}<small>${esc(t.sub)}</small></span></div>`;
+function runSearch() {
+  const box = $("#searchview"), res = box.querySelector(".dbody"), raw = box.querySelector("#sq").value.trim(), q = norm(raw);
+  search.q = q; clearTimeout(search.t);
+  if (q.length < 2) { res.innerHTML = `<p class="note">Name eintippen, zum Beispiel Musiala oder Dortmund.</p>`; return; }
+  const words = q.split(" ");
+  const local = (search.idx || []).filter(t => words.every(w => t.k.includes(w)))
+    .sort((a, b) => (norm(a.name).startsWith(q) ? 0 : 1) - (norm(b.name).startsWith(q) ? 0 : 1) || a.name.localeCompare(b.name, "de")).slice(0, 8);
+  const draw = rem => {
+    const ids = new Set(local.map(t => t.id));
+    const teams = [...local, ...(rem?.team || []).filter(t => !ids.has(t.id))].slice(0, 10);
+    const players = (rem?.player || []).slice(0, 10);
+    let h = "";
+    if (teams.length) h += `<section class="comp"><h2><span>Mannschaften</span><span></span></h2>${teams.map(t => sRow(t, "team")).join("")}</section>`;
+    if (players.length) h += `<section class="comp"><h2><span>Spieler</span><span></span></h2>${players.map(t => sRow(t, "player")).join("")}</section>`;
+    if (!rem) h += `<div class="load">Suche bei ESPN …</div>`;
+    else if (rem.err) h += `<p class="note">Die ESPN-Suche ist gerade nicht erreichbar.</p>`;
+    else if (!teams.length && !players.length) h = `<div class="empty">Nichts gefunden.</div>`;
+    res.innerHTML = h;
+  };
+  draw(null);
+  search.t = setTimeout(async () => {
+    let rem;
+    try { rem = await espnSearch(raw); } catch { rem = { team: [], player: [], err: true }; }
+    if (search.q === q && box.classList.contains("open")) draw(rem);
+  }, 350);
+}
+function openSearch() {
+  const box = $("#searchview");
+  box.innerHTML = `<div class="dhead"><div class="dtop"><button class="back" data-closesearch="1">‹ Zurück</button><span class="dcomp">Suche</span></div>
+    <div class="sfield"><input id="sq" type="search" placeholder="Team oder Spieler" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search"></div></div>
+    <div class="dbody"></div>`;
+  box.classList.add("open"); document.body.classList.add("noscroll"); box.scrollTop = 0; box.style.zIndex = ++zTop;
+  try { history.pushState({ search: 1 }, ""); } catch {}
+  const inp = box.querySelector("#sq");
+  inp.addEventListener("input", runSearch);
+  inp.addEventListener("keydown", e => { if (e.key === "Enter") inp.blur(); });
+  search.q = ""; runSearch();
+  inp.focus();
+  teamIndex().then(() => { if (search.q && box.classList.contains("open")) runSearch(); }).catch(() => {});
+}
+function closeSearch(fromHistory) {
+  const box = $("#searchview");
+  if (!box.classList.contains("open")) return;
+  box.classList.remove("open"); clearTimeout(search.t); search.q = "";
+  if (!topOverlay()) document.body.classList.remove("noscroll");
+  if (!fromHistory) { ignorePop++; try { history.back(); } catch { ignorePop--; } }
+}
+$("#searchBtn").addEventListener("click", openSearch);
 /* ================= Spielerseite: Karriere nach Saisons ================= */
 // Quelle: ESPN statisticslog (alle Wettbewerbe und Saisons eines Spielers). Bewertungen liefert ESPN dort nicht (Felder leer).
 const player = { id: null };
