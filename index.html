@@ -983,7 +983,7 @@ async function viewTeams() {
       };
       html += `<div class="tile today match" data-ev="${esc(e.id)}" data-slug="${esc(slug)}"><div class="meta">${esc((COMP_BY[slug] || {}).name || "")} · ${esc(st.state === "pre" ? "Anpfiff " + hm(e.date) + " Uhr" : st.label)}</div>
         <div class="big"><div>${crestOf(h.team)}<div class="tn">${esc(deName(h.team))}</div>${scorers(h.team.id)}</div><div class="sc2">${mid}</div><div>${crestOf(a.team)}<div class="tn">${esc(deName(a.team))}</div>${scorers(a.team.id)}</div></div>
-        ${st.state === "post" ? `<div class="vids" data-vids="${esc(e.id)}" style="margin:8px 0 0"></div>` : ""}</div>`;
+        ${st.state === "post" ? `<div class="vids" data-vids="${esc(e.id)}" style="margin:8px 0 0"></div>` : tvHTML(e.id).replace('class="vids"', 'class="vids" style="margin:8px 0 0"')}</div>`;
     }
     html += `</section>`;
   }
@@ -1170,18 +1170,26 @@ async function compPage(slug) {
     <button data-round="1" aria-label="Nächste Runde"${state.compRound === rounds.length - 1 ? " disabled" : ""}>›</button></div>`;
   const byDay = new Map();
   r.forEach(e => { evIndex.set(e.id, e); if (statusInfo(e).live) state.hasLive = true; const k = ymd(new Date(e.date)); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push(e); });
-  for (const evs of dayOrder(byDay)) {
-    html += `<section class="comp"><h2><span>${esc(berlin(evs[0].date, { weekday: "long", day: "2-digit", month: "2-digit" }))}</span><span>${evs.length}</span></h2>${evs.map(e => matchHTML(e, slug)).join("")}</section>`;
+  for (const { title, evs } of dayOrder(byDay)) {
+    html += `<section class="comp"><h2><span>${esc(title)}</span><span>${evs.length}</span></h2>${evs.map(e => matchHTML(e, slug)).join("")}</section>`;
   }
   return html;
 }
 
-// Tage einer Runde: Laeuft die Runde schon, steht der juengste Tag oben (heute, gestern, vorgestern).
-// Liegt die ganze Runde noch in der Zukunft, steht der naechste Tag oben.
+// Reihenfolge einer Runde (Wunsch vom 13.11.2026): Live ganz oben, darunter die Ergebnisse, juengste zuerst
+// (gestern Abend vor gestern Nachmittag), ganz unten die kommenden Spiele in zeitlicher Reihenfolge.
 function dayOrder(byDay) {
-  const keys = [...byDay.keys()].sort(), today = ymd(new Date());
-  if (keys.length && keys[0] <= today) keys.reverse();
-  return keys.map(k => byDay.get(k));
+  const all = [...byDay.values()].flat(), t = e => new Date(e.date).getTime();
+  const live = all.filter(e => statusInfo(e).live);
+  const post = all.filter(e => !statusInfo(e).live && statusInfo(e).state === "post").sort((a, b) => t(b) - t(a));
+  const pre = all.filter(e => !statusInfo(e).live && statusInfo(e).state !== "post").sort((a, b) => t(a) - t(b));
+  const rel = { [ymd(new Date())]: "Heute", [ymd(addDays(new Date(), -1))]: "Gestern", [ymd(addDays(new Date(), 1))]: "Morgen" };
+  const group = list => {
+    const m = new Map();
+    for (const e of list) { const k = ymd(new Date(e.date)); if (!m.has(k)) m.set(k, []); m.get(k).push(e); }
+    return [...m].map(([k, evs]) => ({ title: (rel[k] ? rel[k] + ", " : "") + berlin(evs[0].date, rel[k] ? { day: "2-digit", month: "2-digit" } : { weekday: "long", day: "2-digit", month: "2-digit" }), evs }));
+  };
+  return [...(live.length ? [{ title: "Live", evs: live }] : []), ...group(post), ...group(pre)];
 }
 /* ================= Ungarn NB I ueber TheSportsDB ================= */
 const TSDB = "https://www.thesportsdb.com/api/v1/json/123/";
@@ -1261,7 +1269,7 @@ async function tsdbPage(slug) {
   if (!evs.length) return html + `<div class="empty">Für diesen Spieltag sind noch keine Spiele eingetragen.</div>`;
   const byDay = new Map();
   evs.forEach(e => { evIndex.set(e.id, e); const k = ymd(new Date(e.date)); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push(e); });
-  for (const list of dayOrder(byDay)) html += `<section class="comp"><h2><span>${esc(berlin(list[0].date, { weekday: "long", day: "2-digit", month: "2-digit" }))}</span><span>${list.length}</span></h2>${list.map(e => matchHTML(e, slug, { noDetail: true })).join("")}</section>`;
+  for (const { title, evs: list } of dayOrder(byDay)) html += `<section class="comp"><h2><span>${esc(title)}</span><span>${list.length}</span></h2>${list.map(e => matchHTML(e, slug, { noDetail: true })).join("")}</section>`;
   return html + `<p class="note">Quelle: TheSportsDB. Ergebnisse erscheinen erst nach Spielende, Spieldetails gibt es für diese Liga nicht. Videos vom ungarischen Verband (MLSZ).</p>`;
 }
 
