@@ -954,6 +954,21 @@ async function favoritesNext() {
   return `<section class="comp"><h2><span>Nächste Spiele meiner Favoriten</span><span></span></h2>${items.map(e => matchHTML(e, e.league?.slug, { withDate: true })).join("")}</section>`;
 }
 
+// ESPN-Teamspielplaene sind manchmal unvollstaendig (am 17.11.2026 fehlte z. B. Deutschland gegen Niederlande vom 16.11.
+// und Ungarns Spiel vom 17.11.). Darum zusaetzlich die Spielplaene der Wettbewerbe des Teams vom Vormonat bis zum Folgemonat durchsuchen.
+async function teamEventsPlus(id, evs) {
+  const now = Date.now(), map = new Map(evs.map(e => [e.id, e]));
+  const slugs = [...new Set(evs.filter(e => Math.abs(now - new Date(e.date)) < 150 * 864e5).map(e => e.league?.slug).filter(sl => sl && sl !== "club.friendly"))].slice(0, 3);
+  const d = new Date(), months = [-1, 0, 1].map(n => { const x = new Date(d.getFullYear(), d.getMonth() + n, 1); return x.getFullYear() + String(x.getMonth() + 1).padStart(2, "0"); });
+  const res = await Promise.allSettled(slugs.flatMap(sl => months.map((m, i) => getJSON(`${ESPN}${sl}/scoreboard?dates=${m}&limit=500`, i === 1 ? 45000 : 30 * 60000).then(j => [sl, j]))));
+  for (const r of res) {
+    if (r.status !== "fulfilled") continue;
+    const [sl, j] = r.value;
+    for (const e of j.events || []) if ((e.competitions?.[0]?.competitors || []).some(c => String(c.team?.id || c.id) === String(id))) map.set(e.id, { ...e, league: e.league || { slug: sl } });
+  }
+  return [...map.values()];
+}
+
 /* ================= Ansicht: Start (Kacheln) ================= */
 const wd = iso => berlin(iso, { weekday: "long" });
 const hm = iso => berlin(iso, { hour: "2-digit", minute: "2-digit" });
@@ -1001,8 +1016,9 @@ async function viewTeams() {
     ]);
     const ok = x => x.status === "fulfilled" ? (x.value.events || []) : [];
     const info = (res.status === "fulfilled" ? res.value.team : null) || { id: t.id };
-    const past = ok(res).filter(e => e.league?.slug !== "club.friendly" && statusInfo(e).state === "post" && !todayIds.has(e.id)).sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 3);
-    const next = ok(fix).filter(e => statusInfo(e).state === "pre" && !todayIds.has(e.id)).sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 3);
+    const all = await teamEventsPlus(t.id, [...ok(res), ...ok(fix)]);
+    const past = all.filter(e => e.league?.slug !== "club.friendly" && statusInfo(e).state === "post" && !todayIds.has(e.id)).sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 3);
+    const next = all.filter(e => statusInfo(e).state === "pre" && !todayIds.has(e.id)).sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 3);
     [...past, ...next].forEach(e => evIndex.set(e.id, e));
     const row = (e, isPast) => {
       const c = e.competitions[0].competitors, me = c.find(x => x.team.id === t.id) || c[0], op = c.find(x => x !== me) || c[1];
@@ -1129,6 +1145,28 @@ async function viewComps() {
     return u ? `<img class="clogo${c.slug === "esp.1" ? " white" : ""}" src="${u}" alt="${esc(c.name)}" loading="lazy" onerror="this.parentNode.classList.add('nologo');this.remove()">` : "";
   };
   return groups.filter(g => g[1].length).map(([t, l]) => `<section class="comp"><h2><span>${t}</span><span></span></h2><div class="cgrid">${l.map(c => `<button class="ctile${logo(c) ? "" : " nologo"}" style="background:${COMP_COLOR[c.slug] || PAL[k++ % PAL.length]}" data-comp="${c.slug}" aria-label="${esc(c.name)}">${logo(c)}<span class="cname">${esc(c.name)}</span></button>`).join("")}</div></section>`).join("");
+}
+// Unter der Tabelle im Spiel (Wunsch vom 14.11.2026): erst die laufenden Spiele, dann die naechsten.
+// Bei Gruppen alle Spiele der Gruppe, sonst live alle Spiele des Wettbewerbs und je das naechste Spiel der beiden Teams.
+async function tableGames(body, slug, groupIds, ids, curId) {
+  const el = body.querySelector(".tgames");
+  if (!el) return;
+  const now = new Date();
+  const months = [0, 1].map(n => { const d = new Date(now.getFullYear(), now.getMonth() + n, 1); return d.getFullYear() + String(d.getMonth() + 1).padStart(2, "0"); });
+  const res = await Promise.allSettled(months.map((m, i) => getJSON(`${ESPN}${slug}/scoreboard?dates=${m}&limit=500`, i === 0 ? 45000 : 30 * 60000)));
+  if (!el.isConnected) return;
+  const map = new Map();
+  res.forEach(r => { if (r.status === "fulfilled") (r.value.events || []).forEach(e => map.set(e.id, e)); });
+  const evs = [...map.values()].filter(e => e.id !== curId);
+  evs.forEach(e => evIndex.set(e.id, e));
+  const teamsOf = e => (e.competitions?.[0]?.competitors || []).map(c => String(c.team?.id || c.id));
+  const hits = (e, set) => teamsOf(e).some(t => set.has(t));
+  const t = e => new Date(e.date).getTime();
+  const live = evs.filter(e => statusInfo(e).live && (!groupIds || hits(e, groupIds))).sort((a, b) => t(a) - t(b));
+  let next = evs.filter(e => !statusInfo(e).live && statusInfo(e).state === "pre" && hits(e, groupIds || new Set(ids))).sort((a, b) => t(a) - t(b));
+  next = groupIds ? next.slice(0, 6) : [...new Set(ids.map(i => next.find(e => teamsOf(e).includes(i))).filter(Boolean))];
+  el.innerHTML = (live.length ? `<section class="comp"><h2><span>Live</span><span>${live.length}</span></h2>${live.map(e => matchHTML(e, slug, { withDate: true })).join("")}</section>` : "") +
+    (next.length ? `<section class="comp"><h2><span>Nächste Spiele</span><span></span></h2>${next.map(e => matchHTML(e, slug, { withDate: true })).join("")}</section>` : "");
 }
 // Spiele der letzten und naechsten zwei Monate laden und nach Spieltagen (zusammenhaengende Tage) gruppieren
 async function compRounds(slug) {
@@ -1599,9 +1637,12 @@ async function renderDetail(force) {
     const mine = secs.filter(x => ids.some(i => x.querySelector(`tr[data-team="${i}"]`)));
     if (mine.length && mine.length < secs.length) secs.forEach(x => { if (!mine.includes(x)) x.remove(); });
     tmp.querySelectorAll("tr[data-team]").forEach(r => r.classList.toggle("fav", ids.includes(r.dataset.team)));
+    const grouped = mine.length && mine.length < secs.length;
+    const groupIds = grouped ? new Set([...tmp.querySelectorAll("tr[data-team]")].map(r => r.dataset.team)) : null;
     const y = box.scrollTop;
-    body.innerHTML = tmp.innerHTML;
+    body.innerHTML = tmp.innerHTML + `<div class="tgames"></div>`;
     if (!force) box.scrollTop = y;
+    tableGames(body, detail.slug, groupIds, ids, detail.id);
   } else if (hide && detail.tab !== "lineups") {
     body.innerHTML = `<div class="empty">Spoiler-Schutz ist an. Ereignisse, Statistik und Ticker verraten das Ergebnis.<br><br><button class="reveal" data-reveal="${esc(detail.id)}">Trotzdem anzeigen</button><br><br>Die Aufstellungen kannst du ohne Spoiler ansehen.</div>`;
   } else {
@@ -1670,8 +1711,10 @@ async function renderTeam() {
   const info = (res.status === "fulfilled" ? res.value.team : null) || (fix.status === "fulfilled" ? fix.value.team : null) || { id };
   const lg = info.logo || info.logos?.[0]?.href || `https://a.espncdn.com/i/teamlogos/soccer/500/${id}.png`;
   box.querySelector(".thead").innerHTML = `<img src="${esc(lg)}" alt="" onerror="this.style.visibility='hidden'"><b>${esc(info.displayName ? deName(info) : "Team")}</b>`;
-  const past = ok(res).filter(e => e.league?.slug !== "club.friendly" && statusInfo(e).state === "post").sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
-  const next = ok(fix).filter(e => statusInfo(e).state !== "post").sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 3);
+  const all = await teamEventsPlus(id, [...ok(res), ...ok(fix)]);
+  if (team.id !== id) return;
+  const past = all.filter(e => e.league?.slug !== "club.friendly" && statusInfo(e).state === "post").sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+  const next = all.filter(e => statusInfo(e).state !== "post").sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 3);
   [...past, ...next].forEach(e => evIndex.set(e.id, e));
   const y = box.scrollTop;
   box.querySelector(".dbody").innerHTML = `<div class="tnews"></div>` + (res.status !== "fulfilled" ? `<div class="err">Ergebnisse konnten nicht geladen werden.</div>` : "") +
@@ -2102,7 +2145,18 @@ function schedule() {
   clearTimeout(timer);
   timer = setTimeout(() => { if (!document.hidden) render(); else schedule(); }, state.hasLive ? 60000 : 5 * 60000);
 }
-document.addEventListener("visibilitychange", () => { if (!document.hidden) render(); });
+// Beim Zurueckkehren in die App (auch als Homescreen-App nach laengerer Pause) alles frisch laden statt Gemerktes zu zeigen
+let lastShown = Date.now();
+const resume = () => {
+  if (document.hidden) return;
+  if (Date.now() - lastShown > 60000) cache.clear();
+  lastShown = Date.now();
+  render();
+  const o = topOverlay();
+  if (o?.id === "detail") renderDetail(true); else if (o?.id === "teamview") renderTeam();
+};
+document.addEventListener("visibilitychange", () => { if (document.hidden) lastShown = Date.now(); else resume(); });
+window.addEventListener("pageshow", e => { if (e.persisted) { cache.clear(); resume(); } });
 
 /* ================= Nach unten ziehen zum Aktualisieren (ueberall) ================= */
 (() => {
