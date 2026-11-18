@@ -1660,7 +1660,7 @@ function openDetail(id, slug) {
   const c = COMP_BY[slug];
   box.innerHTML = `<div class="dhead"><div class="dtop"><button class="back" data-close="1">‹ Zurück</button><span class="dcomp">${esc(c ? c.name : "")}</span></div>
     <div class="board"></div>
-    <div class="dtabs"><button data-dtab="stats">Statistik</button><button data-dtab="lineups">Aufstellung</button><button data-dtab="events">Ereignisse</button><button data-dtab="ticker">Ticker</button>${c?.table && !c.tsdb ? `<button data-dtab="table">Tabelle</button>` : ""}</div></div>
+    <div class="dtabs"><button data-dtab="stats">Statistik</button><button data-dtab="lineups">Aufstellung</button>${c?.table && !c.tsdb ? `<button data-dtab="table">Tabelle</button>` : ""}<button data-dtab="events">Ereignisse</button><button data-dtab="ticker">Ticker</button></div></div>
     <div class="dbody"><div class="load">Lade Spieldaten …</div></div>`;
   box.classList.add("open"); document.body.classList.add("noscroll"); box.scrollTop = 0; box.style.zIndex = ++zTop;
   try { history.pushState({ detail: id }, ""); } catch {}
