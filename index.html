@@ -1150,14 +1150,43 @@ async function viewTables() {
   if (!tabs.some(c => c.slug === state.tableComp)) state.tableComp = tabs[0].slug;
   let html = `<div class="seg">${tabs.map(c => `<button data-tablecomp="${c.slug}" class="${c.slug === state.tableComp ? "active" : ""}"${c.slug === state.tableComp && COMP_COLOR[c.slug] ? ` style="background:${COMP_COLOR[c.slug]}"` : ""}>${esc(c.name)}</button>`).join("")}</div>`;
   const sub = state.tableSub || "table";
-  html += `<div class="seg small">${[["table","Tabelle"],["goals","Torschützen"],["assists","Vorlagen"]].map(([k,l]) => `<button data-tablesub="${k}" class="${k === sub ? "active" : ""}">${l}</button>`).join("")}</div>`;
+  html += `<div class="seg small">${[["table","Tabelle"],["goals","Torschützen"],["assists","Vorlagen"],["cards","Karten"]].map(([k,l]) => `<button data-tablesub="${k}" class="${k === sub ? "active" : ""}">${l}</button>`).join("")}</div>`;
   return html + await statsHTML(state.tableComp, sub);
+}
+// Karten: die einfache Statistik von ESPN kennt nur Tore und Vorlagen, Gelb und Rot kommen aus der ausführlichen Schnittstelle
+async function cardsHTML(slug) {
+  const sb = await getJSON(`${ESPN}${slug}/scoreboard`, 10 * 60000);
+  const year = sb.leagues?.[0]?.season?.year || new Date().getFullYear();
+  const j = await getJSON(`https://sports.core.api.espn.com/v2/sports/soccer/leagues/${slug}/seasons/${year}/types/1/leaders`, 15 * 60000);
+  const names = {};
+  try { const st = await getJSON(`${ESPN2}${slug}/standings`, 10 * 60000); (st.children?.length ? st.children : [st]).forEach(g => (g.standings?.entries || []).forEach(e => names[e.team.id] = deName(e.team))); } catch {}
+  const ath = async ref => {
+    const id = (ref.match(/athletes\/(\d+)/) || [])[1], k = "sr_ath_" + id, hit = store.get(k, null);
+    if (hit) return hit;
+    const a = await getJSON(ref.replace(/^http:/, "https:"), 24 * 3600000).catch(() => ({}));
+    const n = a.displayName || a.fullName || "";
+    if (n) store.set(k, n);
+    return n;
+  };
+  const block = async (name, label, icon) => {
+    const list = ((j.categories || []).find(c => c.name === name)?.leaders || []).filter(l => l.value > 0).slice(0, 15);
+    if (!list.length) return `<section class="comp"><h2><span>${icon} ${label}</span></h2><div class="empty">Noch keine Daten.</div></section>`;
+    const rows = await Promise.all(list.map(async l => ({ v: l.value, n: await ath(l.athlete?.$ref || ""), pid: (l.athlete?.$ref?.match(/athletes\/(\d+)/) || [])[1], tid: (l.team?.$ref?.match(/teams\/(\d+)/) || [])[1] })));
+    let rank = 0, prev = null;
+    return `<section class="comp"><h2><span>${icon} ${label}</span></h2>${rows.map((r, i) => {
+      if (r.v !== prev) { rank = i + 1; prev = r.v; }
+      return `<div class="lead${MY_IDS.has(r.tid) ? " fav" : ""}"${r.pid ? ` data-player="${esc(r.pid)}" data-pname="${esc(r.n)}"` : ""}><span class="r">${rank}</span>${r.tid ? `<img data-team="${esc(r.tid)}" loading="lazy" src="https://a.espncdn.com/i/teamlogos/soccer/500/${esc(r.tid)}.png" alt="" onerror="this.style.visibility='hidden'">` : "<span></span>"}<span>${esc(r.n)}<small>${esc(names[r.tid] || "")}</small></span><span class="sp"></span><span class="v">${esc(Math.round(r.v))}</span></div>`;
+    }).join("")}</section>`;
+  };
+  const [y, r] = await Promise.all([block("yellowCards", "Gelbe Karten", "🟨"), block("redCards", "Rote Karten", "🟥")]);
+  return y + r + `<p class="note">Karten in diesem Wettbewerb, Saison ${year}/${String(year + 1).slice(2)}. Quelle: ESPN.</p>`;
 }
 async function statsHTML(slug, sub) {
   let html = "";
   if (state.spoiler && !state.tablesRevealed) {
     return `<div class="empty">Tabelle und Statistiken verraten Ergebnisse.<br><br><button class="reveal" data-showtable="1">Trotzdem anzeigen</button></div>`;
   }
+  if (sub === "cards") return cardsHTML(slug);
   if (sub !== "table") {
     const s = await getJSON(`${ESPN}${slug}/statistics`, 15 * 60000);
     const cat = (s.stats || []).find(c => c.name === (sub === "goals" ? "goalsLeaders" : "assistsLeaders"));
@@ -1264,7 +1293,7 @@ async function compPage(slug) {
   if (COMP_BY[slug].tsdb) return tsdbPage(slug);
   const c = COMP_BY[slug], sub = state.compSub || "games";
   let html = `<div class="ctop"><button class="back" data-compback="1">‹ Wettbewerbe</button><b>${esc(c.name)}</b></div>`;
-  html += `<div class="seg small">${[["games","Spiele"],["table","Tabelle"],["goals","Torschützen"],["assists","Vorlagen"]].map(([k, l]) => `<button data-compsub="${k}" class="${k === sub ? "active" : ""}">${l}</button>`).join("")}</div>`;
+  html += `<div class="seg small">${[["games","Spiele"],["table","Tabelle"],["goals","Torschützen"],["assists","Vorlagen"],["cards","Karten"]].map(([k, l]) => `<button data-compsub="${k}" class="${k === sub ? "active" : ""}">${l}</button>`).join("")}</div>`;
   if (sub !== "games") return html + await statsHTML(slug, sub);
   const rounds = await compRounds(slug);
   if (!rounds.length) return html + `<div class="empty">Keine Spiele in den letzten und nächsten zwei Monaten.</div>`;
@@ -1301,13 +1330,13 @@ function dayOrder(byDay) {
 }
 /* ================= Ungarn NB I ueber TheSportsDB ================= */
 const TSDB = "https://www.thesportsdb.com/api/v1/json/123/";
-async function tsdbRound(c, season, r) {
+async function tsdbRound(c, season, r, maxTries = 2) {
   const k = `sr_tsdb_${c.tsdb}_${season}_${r}`, hit = store.get(k, null);
   if (hit) return hit;
   let j;
   for (let tries = 0; ; tries++) {
     try { j = await getJSON(`${TSDB}eventsround.php?id=${c.tsdb}&r=${r}&s=${season}`, 5 * 60000); break; }
-    catch (e) { if (tries >= 3) throw e; await new Promise(res => setTimeout(res, 4000 * (tries + 1))); }
+    catch (e) { if (tries >= maxTries) throw e; await new Promise(res => setTimeout(res, 15000 * (tries + 1))); tsdbLast = Date.now(); }
   }
   const evs = (j.events || []).map(e => ({ id: e.idEvent, ts: e.strTimestamp, st: e.strStatus, pp: e.strPostponed, h: e.strHomeTeam, a: e.strAwayTeam, hi: e.idHomeTeam, ai: e.idAwayTeam, hb: e.strHomeTeamBadge, ab: e.strAwayTeamBadge, hs: e.intHomeScore, as: e.intAwayScore }));
   // Abgeschlossene Spieltage dauerhaft merken (spart Abrufe, die Quelle erlaubt nur wenige pro Minute)
@@ -1331,13 +1360,41 @@ async function tsdbContext(c) {
   const next = (nx.events || [])[0], past = (pv.events || [])[0];
   return { next, past, season: (next || past)?.strSeason, lastRound: past ? +past.intRound : 0 };
 }
-// Mehrere Spieltage laden: nacheinander mit kurzer Pause, der kostenlose Zugang erlaubt nur etwa 30 Abrufe pro Minute
-async function tsdbRounds(c, season, from, to) {
-  const rounds = [];
-  for (let r = Math.max(1, from); r <= Math.min(to, c.rounds); r++) {
+// Mehrere Spieltage laden: nacheinander, der kostenlose Zugang erlaubt nur etwa 30 Abrufe pro Minute.
+// In der Praxis sperrt sie schon nach gut 10 schnellen Abrufen für über eine Minute, deshalb höchstens ein Abruf alle 5 Sekunden über die ganze App.
+let tsdbLast = 0, tsdbProgress = null;
+async function tsdbPace() {
+  const wait = tsdbLast + 5000 - Date.now();
+  tsdbLast = Math.max(Date.now(), tsdbLast + 5000);
+  if (wait > 0) await new Promise(res => setTimeout(res, wait));
+}
+// Läuft dieselbe Abfrage schon (etwa doppeltes Rendern), wird sie mitbenutzt statt doppelt Abrufe zu verbrauchen
+const tsdbBusy = new Map();
+function tsdbRounds(c, season, from, to) {
+  const k = [c.tsdb, season, from, to].join("_");
+  if (!tsdbBusy.has(k)) tsdbBusy.set(k, tsdbRoundsLoad(c, season, from, to).finally(() => tsdbBusy.delete(k)));
+  return tsdbBusy.get(k);
+}
+async function tsdbRoundsLoad(c, season, from, to) {
+  const rounds = [], a = Math.max(1, from), b = Math.min(to, c.rounds);
+  const todo = [];
+  for (let r = a; r <= b; r++) if (!store.get(`sr_tsdb_${c.tsdb}_${season}_${r}`, null)) todo.push(r);
+  let done = 0, fails = 0;
+  for (let r = a; r <= b; r++) {
     const cached = store.get(`sr_tsdb_${c.tsdb}_${season}_${r}`, null);
-    rounds.push(cached || await tsdbRound(c, season, r));
-    if (!cached) await new Promise(res => setTimeout(res, 600));
+    if (cached) { rounds.push(cached); continue; }
+    // Nach der zweiten Sperre aufgeben, der Rest kommt beim nächsten Aktualisieren (fertige Spieltage bleiben gespeichert)
+    if (fails >= 2) { rounds.push(null); continue; }
+    if (todo.length > 2) tsdbProgress?.(done, todo.length);
+    await tsdbPace();
+    try { rounds.push(await tsdbRound(c, season, r, 0)); done++; }
+    catch {
+      fails++;
+      if (fails >= 2) { rounds.push(null); continue; }
+      tsdbProgress?.(done, todo.length, true);
+      await new Promise(res => setTimeout(res, 65000)); tsdbLast = Date.now();
+      r--;
+    }
   }
   return rounds;
 }
@@ -1350,7 +1407,12 @@ async function tsdbPage(slug) {
   if (!season) return html + `<div class="empty">Daten für die NB I sind gerade nicht erreichbar.</div>`;
   if (sub === "table") {
     if (state.spoiler && !state.tablesRevealed) return html + `<div class="empty">Die Tabelle verrät Ergebnisse.<br><br><button class="reveal" data-showtable="1">Trotzdem anzeigen</button></div>`;
-    const rounds = await tsdbRounds(c, season, 1, lastRound + 1);
+    tsdbProgress = (d, n, wait) => document.querySelectorAll("#app .load, #detail .dbody .load").forEach(x => x.textContent = wait ? `Lade Tabelle … ${d} von ${n} Spieltagen. Die Datenquelle bremst gerade, es geht in einer Minute weiter.` : `Lade Tabelle … ${d} von ${n} Spieltagen (die Datenquelle erlaubt nur langsame Abrufe, beim nächsten Mal geht es schnell)`);
+    let rounds;
+    try { rounds = await tsdbRounds(c, season, 1, lastRound + 1); } finally { tsdbProgress = null; }
+    const missing = rounds.filter(r => !r).length;
+    if (missing === rounds.length) return html + `<div class="empty">Tabelle gerade nicht erreichbar. Bitte in einer Minute nach unten ziehen zum Aktualisieren.</div>`;
+    rounds = rounds.filter(Boolean);
     const tab = new Map();
     const row = (id, n, b) => { if (!tab.has(id)) tab.set(id, { id, n, b, sp: 0, s: 0, u: 0, nl: 0, gf: 0, ga: 0 }); return tab.get(id); };
     rounds.flat().forEach(e => {
@@ -1363,7 +1425,7 @@ async function tsdbPage(slug) {
     const list = [...tab.values()].map(t => ({ ...t, p: t.s * 3 + t.u, d: t.gf - t.ga })).sort((x, y) => y.p - x.p || y.d - x.d || y.gf - x.gf || x.n.localeCompare(y.n));
     return html + `<section class="comp"><table class="tbl"><thead><tr><th class="r">#</th><th class="t">Team</th><th>Sp</th><th>S</th><th>U</th><th>N</th><th>Tore</th><th>Diff</th><th>Pkt</th></tr></thead><tbody>
       ${list.map((t, i) => `<tr data-team="tsdb${esc(t.id)}"><td class="r">${i + 1}</td><td class="t">${t.b ? `<img loading="lazy" src="${esc(t.b)}/tiny" alt="">` : ""}<span>${esc(t.n)}</span></td><td>${t.sp}</td><td>${t.s}</td><td>${t.u}</td><td>${t.nl}</td><td>${t.gf}:${t.ga}</td><td>${t.d > 0 ? "+" + t.d : t.d}</td><td><b>${t.p}</b></td></tr>`).join("")}
-      </tbody></table></section><p class="note">Selbst berechnet aus allen Ergebnissen (3 Punkte pro Sieg, bei Gleichstand Tordifferenz, dann Tore). Die offizielle Tabelle kann bei Punktgleichheit anders sortiert sein. Quelle: TheSportsDB.</p>`;
+      </tbody></table></section>${missing ? `<p class="note"><b>Noch unvollständig:</b> ${missing} Spieltag${missing > 1 ? "e" : ""} konnte${missing > 1 ? "n" : ""} gerade nicht geladen werden. Zum Vervollständigen nach unten ziehen.</p>` : ""}<p class="note">Selbst berechnet aus allen Ergebnissen (3 Punkte pro Sieg, bei Gleichstand Tordifferenz, dann Tore). Die offizielle Tabelle kann bei Punktgleichheit anders sortiert sein. Quelle: TheSportsDB.</p>`;
   }
   if (state.compRound == null || state.compRoundFor !== slug) {
     const pastRecent = past && past.strTimestamp && Date.now() - new Date(past.strTimestamp + "Z") < 2 * 86400000;
@@ -1694,10 +1756,19 @@ async function renderDetail(force) {
   if (detail.tab === "table") {
     // Tabelle des Wettbewerbs, beide Teams des Spiels hervorgehoben; bei Gruppen nur die Gruppe der beiden Teams
     const ids = [String(home.team.id), String(away.team.id)];
-    if (!body.querySelector(".tbl")) body.innerHTML = `<div class="load">Lade Tabelle …</div>`;
+    const tsub = detail.tsub || "table";
+    const seg = `<div class="seg small">${[["table","Tabelle"],["goals","Torschützen"],["assists","Vorlagen"],["cards","Karten"]].map(([k, l]) => `<button data-dtsub="${k}" class="${k === tsub ? "active" : ""}">${l}</button>`).join("")}</div>`;
+    if (body.dataset.tsub !== tsub || !body.querySelector(tsub === "table" ? ".tbl" : ".lead, .empty")) body.innerHTML = seg + `<div class="load">Lade ${tsub === "table" ? "Tabelle" : "Statistik"} …</div>`;
+    body.dataset.tsub = tsub;
     let html;
-    try { html = await statsHTML(detail.slug, "table"); } catch { html = `<div class="empty">Tabelle gerade nicht erreichbar.</div>`; }
-    if (detail.tab !== "table" || !box.classList.contains("open")) return;
+    try { html = await statsHTML(detail.slug, tsub); } catch { html = `<div class="empty">${tsub === "table" ? "Tabelle" : "Statistik"} gerade nicht erreichbar.</div>`; }
+    if (detail.tab !== "table" || (detail.tsub || "table") !== tsub || !box.classList.contains("open")) return;
+    if (tsub !== "table") {
+      const tmp = document.createElement("div"); tmp.innerHTML = html;
+      tmp.querySelectorAll(".lead").forEach(r => { const t = r.querySelector("img[data-team]")?.dataset.team; if (t) r.classList.toggle("fav", ids.includes(t)); });
+      const y = box.scrollTop; body.innerHTML = seg + tmp.innerHTML; if (!force) box.scrollTop = y;
+      return;
+    }
     const tmp = document.createElement("div"); tmp.innerHTML = html;
     const secs = [...tmp.querySelectorAll("section.comp")];
     const mine = secs.filter(x => ids.some(i => x.querySelector(`tr[data-team="${i}"]`)));
@@ -1706,7 +1777,7 @@ async function renderDetail(force) {
     const grouped = mine.length && mine.length < secs.length;
     const groupIds = grouped ? new Set([...tmp.querySelectorAll("tr[data-team]")].map(r => r.dataset.team)) : null;
     const y = box.scrollTop;
-    body.innerHTML = tmp.innerHTML + `<div class="tgames"></div>`;
+    body.innerHTML = seg + tmp.innerHTML + `<div class="tgames"></div>`;
     if (!force) box.scrollTop = y;
     tableGames(body, detail.slug, groupIds, ids, detail.id);
   } else if (hide && detail.tab !== "lineups") {
@@ -1767,7 +1838,7 @@ async function renderTsdbDetail(force) {
   try {
     const ctx = await tsdbContext(c);
     if (!ctx.season) return;
-    const evs = (await tsdbRounds(c, ctx.season, ctx.lastRound + 1, ctx.lastRound + 2)).flat().map(tsdbEv).filter(e => e.id !== id && statusInfo(e).state === "pre").sort((a, b) => new Date(a.date) - new Date(b.date));
+    const evs = (await tsdbRounds(c, ctx.season, ctx.lastRound + 1, ctx.lastRound + 2)).filter(Boolean).flat().map(tsdbEv).filter(e => e.id !== id && statusInfo(e).state === "pre").sort((a, b) => new Date(a.date) - new Date(b.date));
     const next = [...new Set(ids.map(t => evs.find(e => e.competitions[0].competitors.some(x => x.team.id === t))).filter(Boolean))];
     const el = body.querySelector(".tnext");
     if (!el || detail.id !== id || detail.tab !== "info") return;
@@ -1778,7 +1849,7 @@ async function renderTsdbDetail(force) {
 function openDetail(id, slug) {
   if (!id || !slug || slug === "undefined") return;
   const c = COMP_BY[slug];
-  detail.id = id; detail.slug = slug; detail.tab = c?.tsdb ? "info" : "stats";
+  detail.id = id; detail.slug = slug; detail.tab = c?.tsdb ? "info" : "stats"; detail.tsub = "table";
   const box = $("#detail");
   box.innerHTML = `<div class="dhead"><div class="dtop"><button class="back" data-close="1">‹ Zurück</button><span class="dcomp">${esc(c ? c.name : "")}</span></div>
     <div class="board"></div>
@@ -1905,7 +1976,7 @@ async function renderTsdbTeam(box, id) {
   const c = COMP_BY["hun.1"], tid = String(id).slice(4);
   const { season, lastRound } = await tsdbContext(c);
   if (!season) { box.querySelector(".dbody").innerHTML = `<div class="err">Daten für die NB I sind gerade nicht erreichbar.</div>`; return; }
-  const all = (await tsdbRounds(c, season, 1, lastRound + 4)).flat().filter(e => e.hi === tid || e.ai === tid);
+  const all = (await tsdbRounds(c, season, 1, lastRound + 4)).filter(Boolean).flat().filter(e => e.hi === tid || e.ai === tid);
   if (team.id !== id) return;
   const any = all[0];
   if (any) {
@@ -2235,6 +2306,8 @@ $("#detail").addEventListener("click", e => {
   if (e.target.closest("[data-close]")) { closeDetail(false); return; }
   const t = e.target.closest("[data-dtab]");
   if (t) { detail.tab = t.dataset.dtab; renderDetail(); $("#detail").scrollTop = 0; return; }
+  const ts = e.target.closest("[data-dtsub]");
+  if (ts) { detail.tsub = ts.dataset.dtsub; renderDetail(); return; }
   const r = e.target.closest("[data-reveal]");
   if (r) { e.stopPropagation(); state.revealed.add(r.dataset.reveal); renderDetail(); return; }
   if (e.target.closest("[data-showtable]")) { e.stopPropagation(); state.tablesRevealed = true; renderDetail(); }
