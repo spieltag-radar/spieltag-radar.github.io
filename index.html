@@ -1092,8 +1092,11 @@ async function fillLastRound() {
   const res = await Promise.all(list.map(c => lastRoundOf(c).catch(() => null)));
   if (!el.isConnected) return;
   const t = e => new Date(e.date).getTime(), dm = e => berlin(e.date, { day: "2-digit", month: "2-digit" });
-  const blocks = res.filter(Boolean).map(({ c, evs, round }) => {
-    evs.sort((a, b) => t(b) - t(a));
+  // Wettbewerbe nach Aktualitaet: der Wettbewerb mit dem juengsten Ergebnis steht oben (Wunsch vom 23.11.2026)
+  const found = res.filter(Boolean);
+  found.forEach(r => r.evs.sort((a, b) => t(b) - t(a)));
+  found.sort((x, y) => t(y.evs[0]) - t(x.evs[0]));
+  const blocks = found.map(({ c, evs, round }) => {
     evs.forEach(e => evIndex.set(e.id, e));
     const first = evs[evs.length - 1], last = evs[0];
     const when = dm(first) === dm(last) ? dm(first) : `${dm(first)} bis ${dm(last)}`;
