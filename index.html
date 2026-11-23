@@ -253,6 +253,13 @@ th,td,.lead,.stat,.pl,.tick,.ev,.crow{border-color:var(--line)}
 #ptr.ok,#ptr.bad{width:auto;padding:0 16px 0 12px;border-radius:20px;gap:8px;font-size:15px;color:#fff;white-space:nowrap}
 #ptr.ok{background:#00a300}#ptr.bad{background:#e51400}#ptr.bad b{font-size:18px}
 @keyframes ptrspin{to{transform:rotate(360deg)}}
+.lrc{margin:0 0 10px}
+.lrh{display:flex;align-items:baseline;gap:10px;padding:11px 12px;background:#1f1f1f;cursor:pointer}
+.lrh b{font-weight:600;font-size:17px;white-space:nowrap}
+.lrh span{color:var(--muted);font-size:14px;flex:1;min-width:0}
+.lrh i{font-style:normal;color:var(--accent);font-size:20px;line-height:1;transition:transform .2s}
+.lrc.open .lrh i{transform:rotate(90deg)}
+.lrb{display:none}.lrc.open .lrb{display:block}
 .srow small{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .nitem{display:block;padding:9px 0;color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
 .nitem b{display:block;font-size:17px;font-weight:600;line-height:1.3}
@@ -692,7 +699,7 @@ function matchHTML(ev, slug, opts = {}) {
       ${scoreCol}
     </div>
     ${dateLine}
-    ${st.state === "post" ? `<div class="vids" data-vids="${esc(ev.id)}"><span class="novid">Suche Zusammenfassung …</span></div>` : tvHTML(ev.id)}
+    ${st.state === "post" ? (opts.lazyVids ? `<div class="vids" data-lvids="${esc(ev.id)}"></div>` : `<div class="vids" data-vids="${esc(ev.id)}"><span class="novid">Suche Zusammenfassung …</span></div>`) : tvHTML(ev.id)}
   </div>`;
 }
 // Free TV in Deutschland: von Claude recherchiert (Programmankuendigungen der Sender und Fachseiten), Schluessel ist die ESPN Spiel-ID.
@@ -720,6 +727,18 @@ document.addEventListener("click", e => {
   if (e.target.closest("[data-closeplayer]")) { closePlayer(false); return; }
   if (e.target.closest("[data-closeteam]")) { closeTeam(false); return; }
   if (e.target.closest("[data-closesearch]")) { closeSearch(false); return; }
+  const lt = e.target.closest("[data-lrtoggle]");
+  if (lt) {
+    const box = lt.parentElement, k = lt.dataset.lrtoggle;
+    box.classList.toggle("open");
+    if (box.classList.contains("open")) {
+      LR_OPEN.add(k);
+      // Videos erst beim Aufklappen suchen, das schont das Tageskontingent der YouTube-Suche
+      box.querySelectorAll("[data-lvids]").forEach(v => { v.dataset.vids = v.dataset.lvids; v.removeAttribute("data-lvids"); v.innerHTML = `<span class="novid">Suche Zusammenfassung …</span>`; });
+      fillVideos(box);
+    } else LR_OPEN.delete(k);
+    return;
+  }
   if (e.target.closest("[data-shownews]")) { state.newsRevealed = true; renderTeam(); return; }
   const open = e.target.closest(".match");
   if (open && !e.target.closest("a,button") && !open.closest("#detail") && !open.classList.contains("nodetail")) { openDetail(open.dataset.ev, open.dataset.slug); return; }
@@ -1044,7 +1063,49 @@ async function viewTeams() {
       <div class="lbl">Zuletzt</div>${past.map(e => row(e, true)).join("") || `<div class="trow"><span class="when">Keine Spiele</span></div>`}
       <div class="lbl">Als Nächstes</div>${next.map(e => row(e, false)).join("") || `<div class="trow"><span class="when">Keine Termine</span></div>`}</div>`;
   }));
-  return html + `<section class="comp"><h2><span>Meine Teams</span><span></span></h2>${blocks.join("")}</section>`;
+  return html + `<section class="comp"><h2><span>Meine Teams</span><span></span></h2>${blocks.join("")}</section><div id="lastround"><div class="load">Lade letzten Spieltag …</div></div>`;
+}
+// Start: "Letzter Spieltag" je Liga und Europapokal (Wunsch vom 22.11.2026). Je Wettbewerb eine Kopfzeile zum Aufklappen,
+// Spiele der eigenen Teams stehen immer sichtbar darunter. Nationale Pokale und Testspiele bleiben aussen vor.
+const LR_OPEN = new Set();
+// Nur wirklich gespielte Spiele: verlegte oder abgesagte Spiele (ESPN fuehrt sie teils als beendet mit neuem Datum) bleiben draussen
+const played = e => statusInfo(e).state === "post" && new Date(e.date).getTime() <= Date.now() && !/POSTPON|CANCEL|ABANDON|DELAY/.test(e.competitions?.[0]?.status?.type?.name || "");
+async function lastRoundOf(c) {
+  if (c.intl && !(await isCurrent(c.slug))) return null;
+  if (c.tsdb) {
+    const ctx = await tsdbContext(c);
+    if (!ctx.season || !ctx.lastRound) return null;
+    const evs = (await tsdbRound(c, ctx.season, ctx.lastRound)).map(tsdbEv).filter(played);
+    return evs.length ? { c, evs, round: ctx.lastRound } : null;
+  }
+  const rounds = await compRounds(c.slug);
+  for (let i = rounds.length - 1; i >= 0; i--) {
+    const evs = rounds[i].filter(played);
+    if (evs.length) return { c, evs };
+  }
+  return null;
+}
+async function fillLastRound() {
+  const el = $("#lastround");
+  if (!el) return;
+  const list = [...COMPS, ...EXTRA].filter(c => c.table && !c.onlyMine);
+  const res = await Promise.all(list.map(c => lastRoundOf(c).catch(() => null)));
+  if (!el.isConnected) return;
+  const t = e => new Date(e.date).getTime(), dm = e => berlin(e.date, { day: "2-digit", month: "2-digit" });
+  const blocks = res.filter(Boolean).map(({ c, evs, round }) => {
+    evs.sort((a, b) => t(b) - t(a));
+    evs.forEach(e => evIndex.set(e.id, e));
+    const first = evs[evs.length - 1], last = evs[0];
+    const when = dm(first) === dm(last) ? dm(first) : `${dm(first)} bis ${dm(last)}`;
+    const label = `${round ? round + ". Spieltag, " : ""}${when} · ${evs.length} ${evs.length === 1 ? "Spiel" : "Spiele"}`;
+    const open = LR_OPEN.has(c.slug), noDetail = !!c.tsdb;
+    const fav = evs.filter(isMine), rest = evs.filter(e => !isMine(e));
+    return `<div class="lrc${open ? " open" : ""}"><div class="lrh" data-lrtoggle="${esc(c.slug)}"><b>${esc(c.name)}</b><span>${esc(label)}</span>${rest.length ? `<i>›</i>` : ""}</div>` +
+      fav.map(e => matchHTML(e, c.slug, { noDetail })).join("") +
+      (rest.length ? `<div class="lrb">${rest.map(e => matchHTML(e, c.slug, { noDetail, lazyVids: !open })).join("")}</div>` : "") + `</div>`;
+  });
+  el.innerHTML = blocks.length ? `<section class="comp"><h2><span>Letzter Spieltag</span><span></span></h2>${blocks.join("")}</section>` : "";
+  fillVideos(el);
 }
 async function viewTeamsOld() {
   const todayStr = ymd(new Date());
@@ -2138,6 +2199,7 @@ async function render(showLoading) {
   app.innerHTML = html + `<div class="status">${lastUpdate ? "Stand: " + esc(berlin(lastUpdate, { hour:"2-digit", minute:"2-digit", second:"2-digit" })) : ""}${state.hasLive ? " · aktualisiert sich jede Minute" : ""}</div>`;
   if (!showLoading) window.scrollTo(0, y);
   fillVideos(app);
+  if (state.view === "teams") fillLastRound();
   schedule();
 }
 let timer = null;
