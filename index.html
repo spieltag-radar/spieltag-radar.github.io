@@ -253,6 +253,7 @@ th,td,.lead,.stat,.pl,.tick,.ev,.crow{border-color:var(--line)}
 #ptr.ok,#ptr.bad{width:auto;padding:0 16px 0 12px;border-radius:20px;gap:8px;font-size:15px;color:#fff;white-space:nowrap}
 #ptr.ok{background:#00a300}#ptr.bad{background:#e51400}#ptr.bad b{font-size:18px}
 @keyframes ptrspin{to{transform:rotate(360deg)}}
+.facts div{padding:8px 0;border-bottom:1px solid var(--line);font-size:17px}
 .lrc{margin:0 0 10px}
 .lrh{display:flex;align-items:baseline;gap:10px;padding:11px 12px;background:#1f1f1f;cursor:pointer}
 .lrh b{font-weight:600;font-size:17px;white-space:nowrap}
@@ -741,7 +742,7 @@ document.addEventListener("click", e => {
   }
   if (e.target.closest("[data-shownews]")) { state.newsRevealed = true; renderTeam(); return; }
   const open = e.target.closest(".match");
-  if (open && !e.target.closest("a,button") && !open.closest("#detail") && !open.classList.contains("nodetail")) { openDetail(open.dataset.ev, open.dataset.slug); return; }
+  if (open && !e.target.closest("a,button") && !open.closest("#detail") && (!open.classList.contains("nodetail") || COMP_BY[open.dataset.slug]?.tsdb)) { openDetail(open.dataset.ev, open.dataset.slug); return; }
   const r = e.target.closest("[data-reveal]");
   if (r) { state.revealed.add(r.dataset.reveal); if (r.closest("#teamview")) renderTeam(); else render(); }
   const t = e.target.closest("[data-showtable]");
@@ -1647,6 +1648,7 @@ function detailBody(s, ev) {
   return "";
 }
 async function renderDetail(force) {
+  if (COMP_BY[detail.slug]?.tsdb) return renderTsdbDetail(force);
   const box = $("#detail");
   const ev = evIndex.get(detail.id);
   let s;
@@ -1717,14 +1719,70 @@ async function renderDetail(force) {
   clearTimeout(detail.timer);
   if (st.live) detail.timer = setTimeout(() => { if (!document.hidden) renderDetail(); }, 30000);
 }
+// NB I (TheSportsDB): schlanke Spielseite mit Reitern "Spiel" und "Tabelle" (Wunsch vom 23.11.2026).
+// Aufstellung, Statistik und Torschuetzen liefert die kostenlose Quelle nicht (am 23.11.2026 geprueft: lineup, eventstats, timeline leer).
+async function renderTsdbDetail(force) {
+  const box = $("#detail"), id = detail.id, slug = detail.slug, c = COMP_BY[slug];
+  let info = null;
+  try { info = (await getJSON(`${TSDB}lookupevent.php?id=${id.slice(4)}`, force ? 0 : 5 * 60000)).events?.[0] || null; } catch {}
+  if (detail.id !== id || !box.classList.contains("open")) return;
+  const body = box.querySelector(".dbody");
+  let ev = evIndex.get(id);
+  if (info) ev = tsdbEv({ id: info.idEvent, ts: info.strTimestamp, st: info.strStatus, pp: info.strPostponed, h: info.strHomeTeam, a: info.strAwayTeam, hi: info.idHomeTeam, ai: info.idAwayTeam, hb: info.strHomeTeamBadge, ab: info.strAwayTeamBadge, hs: info.intHomeScore, as: info.intAwayScore });
+  if (!ev) { body.innerHTML = `<div class="err">Spieldaten konnten nicht geladen werden.</div>`; return; }
+  evIndex.set(id, ev);
+  const comp = ev.competitions[0], st = statusInfo(ev);
+  const home = comp.competitors.find(x => x.homeAway === "home"), away = comp.competitors.find(x => x.homeAway === "away");
+  const hide = st.state !== "pre" && state.spoiler && !state.revealed.has(id);
+  const tl = t => t.logo ? `<img src="${esc(t.logo.replace(/\/tiny$/, "/small"))}" alt="" onerror="this.style.visibility='hidden'">` : "";
+  box.querySelector(".board").innerHTML = `
+    <div data-team="${esc(home.team.id)}">${tl(home.team)}<div class="tn">${esc(home.team.displayName)}</div></div>
+    <div><div class="big">${st.state === "pre" ? "-:-" : hide ? `<button class="reveal" data-reveal="${esc(id)}">Ergebnis zeigen</button>` : `${esc(scoreOf(home))}:${esc(scoreOf(away))}`}</div>
+      <div class="st">${esc(st.state === "pre" ? berlin(ev.date, { weekday: "long", day: "2-digit", month: "2-digit" }) + ", " + st.label + " Uhr" : st.label)}</div></div>
+    <div data-team="${esc(away.team.id)}">${tl(away.team)}<div class="tn">${esc(away.team.displayName)}</div></div>`;
+  box.querySelectorAll(".dtabs button").forEach(b => b.classList.toggle("active", b.dataset.dtab === detail.tab));
+  const ids = [home.team.id, away.team.id];
+  if (detail.tab === "table") {
+    if (!body.querySelector(".tbl")) body.innerHTML = `<div class="load">Lade Tabelle …</div>`;
+    // Die Tabelle der NB I rechnet die Wettbewerbsseite aus den Spieltagen aus; sie liest den Reiter sofort beim Aufruf
+    const keep = state.compSub; state.compSub = "table"; const p = tsdbPage(slug); state.compSub = keep;
+    let html = "";
+    try { html = await p; } catch {}
+    if (detail.tab !== "table" || detail.id !== id || !box.classList.contains("open")) return;
+    const tmp = document.createElement("div"); tmp.innerHTML = html;
+    tmp.querySelector(".ctop")?.remove(); tmp.querySelector(".seg")?.remove();
+    tmp.querySelectorAll("tr[data-team]").forEach(r => r.classList.toggle("fav", ids.includes(r.dataset.team)));
+    const y = box.scrollTop;
+    body.innerHTML = tmp.innerHTML.trim() ? tmp.innerHTML : `<div class="empty">Tabelle gerade nicht erreichbar.</div>`;
+    if (!force) box.scrollTop = y;
+    return;
+  }
+  const when = berlin(ev.date, { weekday: "long", day: "2-digit", month: "2-digit" }) + ", " + berlin(ev.date, { hour: "2-digit", minute: "2-digit" }) + " Uhr";
+  const facts = [info?.intRound ? `${info.intRound}. Spieltag` : "", when, info?.strVenue || ""].filter(Boolean);
+  body.innerHTML = (st.state === "post" ? `<section class="comp"><h2><span>Zusammenfassung</span><span></span></h2><div class="match nodetail" data-ev="${esc(id)}" data-slug="${esc(slug)}"><div class="vids" data-vids="${esc(id)}"><span class="novid">Suche Zusammenfassung …</span></div></div></section>` : "") +
+    `<section class="comp"><h2><span>Zum Spiel</span><span></span></h2><div class="facts">${facts.map(f => `<div>${esc(f)}</div>`).join("")}</div></section>` +
+    `<div class="tnext"></div><p class="note">Aufstellung, Statistik und Torschützen gibt es für die NB I leider nicht, die kostenlose Datenquelle liefert sie nicht. Die Tabelle findest du im Reiter „Tabelle“.</p>`;
+  fillVideos(body);
+  // Das naechste Spiel beider Teams aus den kommenden zwei Spieltagen
+  try {
+    const ctx = await tsdbContext(c);
+    if (!ctx.season) return;
+    const evs = (await tsdbRounds(c, ctx.season, ctx.lastRound + 1, ctx.lastRound + 2)).flat().map(tsdbEv).filter(e => e.id !== id && statusInfo(e).state === "pre").sort((a, b) => new Date(a.date) - new Date(b.date));
+    const next = [...new Set(ids.map(t => evs.find(e => e.competitions[0].competitors.some(x => x.team.id === t))).filter(Boolean))];
+    const el = body.querySelector(".tnext");
+    if (!el || detail.id !== id || detail.tab !== "info") return;
+    next.forEach(e => evIndex.set(e.id, e));
+    el.innerHTML = next.length ? `<section class="comp"><h2><span>Nächste Spiele</span><span></span></h2>${next.map(e => matchHTML(e, slug, { withDate: true })).join("")}</section>` : "";
+  } catch {}
+}
 function openDetail(id, slug) {
   if (!id || !slug || slug === "undefined") return;
-  detail.id = id; detail.slug = slug; detail.tab = "stats";
-  const box = $("#detail");
   const c = COMP_BY[slug];
+  detail.id = id; detail.slug = slug; detail.tab = c?.tsdb ? "info" : "stats";
+  const box = $("#detail");
   box.innerHTML = `<div class="dhead"><div class="dtop"><button class="back" data-close="1">‹ Zurück</button><span class="dcomp">${esc(c ? c.name : "")}</span></div>
     <div class="board"></div>
-    <div class="dtabs"><button data-dtab="stats">Statistik</button><button data-dtab="lineups">Aufstellung</button>${c?.table && !c.tsdb ? `<button data-dtab="table">Tabelle</button>` : ""}<button data-dtab="events">Ereignisse</button><button data-dtab="ticker">Ticker</button></div></div>
+    <div class="dtabs">${c?.tsdb ? `<button data-dtab="info">Spiel</button><button data-dtab="table">Tabelle</button>` : `<button data-dtab="stats">Statistik</button><button data-dtab="lineups">Aufstellung</button>${c?.table && !c.tsdb ? `<button data-dtab="table">Tabelle</button>` : ""}<button data-dtab="events">Ereignisse</button><button data-dtab="ticker">Ticker</button>`}</div></div>
     <div class="dbody"><div class="load">Lade Spieldaten …</div></div>`;
   box.classList.add("open"); document.body.classList.add("noscroll"); box.scrollTop = 0; box.style.zIndex = ++zTop;
   try { history.pushState({ detail: id }, ""); } catch {}
